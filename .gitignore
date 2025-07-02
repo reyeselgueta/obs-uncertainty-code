@@ -1,0 +1,13 @@
+# Ignorar archivos específicos
+__init__.py
+__pycache__/
+
+# Ignorar deep4downscaling
+deep4downscaling/
+
+# Ignorar todo el contenido dentro de preds/
+preds/**
+
+# Pero permitir las subcarpetas dentro de preds/
+!preds*/
+!.gitkeep
