@@ -2,22 +2,21 @@ import xarray as xr
 import utils
 import numpy as np
 import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from matplotlib.patches import Rectangle
 
 
 
-# DATA_PATH_PREDICTORS = '/lustre/gmeteo/PTICLIMA/DATA/PROJECTIONS/CMIP6_PNACC/CMIP6_models/'
-# DATA_PATH_PREDICTANDS_READ = '/lustre/gmeteo/PTICLIMA/DATA/AUX/GRID_INTERCOMP/'
 DATA_PATH_PREDICTANDS_SAVE = '/lustre/gmeteo/WORK/reyess/data/predictand/'# TODO MERGIAR
-# DATA_PATH_SHAPE = '/lustre/gmeteo/WORK/reyess/shapes/'
 FIGS_PATH = '/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling/notebooks/figures/'
 MODELS_PATH = '/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling/notebooks/models/'
-# DATA_PREDICTORS_TRANSFORMED = '/lustre/gmeteo/WORK/reyess/data/NorthAtlanticRegion_1.5degree/'
 PREDS_PATH_GCM = '/oceano/gmeteo/users/reyess/paper1-code/preds/gcm/'# TODO MERGIAR
 PREDS_PATH_TEST = '/oceano/gmeteo/users/reyess/paper1-code/preds/test/' #TODO MERGIAR
 
 # # INPUT DATA
-FIGS = '2'#str(sys.argv[1])
-ENSEMBLE_QUANTITY = 1
+FIGS = '6' # Seleccionar figura a realizar
+ENSEMBLE_QUANTITY = 10
 GCM_NAME = 'EC-Earth3-Veg'
 MAIN_SCENARIO = 'ssp585'
 
@@ -29,16 +28,19 @@ predictands_map = {'ERA5-Land0.25deg': 'ERA5-Land', 'E-OBS': 'E-OBS','AEMET_0.25
 hist_baseline = ('1995-01-01', '2014-12-31')
 yearsTrain = ('1980-01-01', '2003-12-31')
 yearsTest = ('2004-01-01', '2015-12-31')
+yearsGCM = ('2081', '2100')
 future_1 = ('2021-01-01', '2040-12-31')
 future_2 = ('2041-01-01', '2060-12-31')
 future_3 = ('2081-01-01', '2100-12-31') 
 future_4 = ('2061-01-01', '2080-12-31')
 
 
+
 ### # FIG1 # ####
 if '1' in FIGS:
 # DATOS OBSERVACION
-    metrics = ['mean', '99quantile']
+    metrics = ['Mean', '99th']
+    metrics_map = {metric: metric for metric in metrics}
     obs = {}
     whole_obs = {'annual': {}}
     whole_obs_metrics = {'annual': {}}
@@ -58,7 +60,7 @@ if '1' in FIGS:
                     objective = obs[predictand_name],
                     secondGrid = obs[predictand_name])
         whole_obs['annual'][predictand_name] = obs[predictand_name]
-        whole_obs_metrics['annual'][predictand_name] = utils.getMetricsTemp(whole_obs['annual'][predictand_name], short = True)
+        whole_obs_metrics['annual'][predictand_name] = utils.get_metrics_temp(whole_obs['annual'][predictand_name], short = True)
         for metric_stat in metrics:
             total_metrics[metric_stat].append(whole_obs_metrics['annual'][predictand_name][metric_stat])
     
@@ -67,9 +69,10 @@ if '1' in FIGS:
             vmin=[5, 15], vmax=[25, 35],
             fig_path=FIGS_PATH, fig_name=f'fig1_metrics_observation_annual_{yearsTrain[0]}-{yearsTest[1]}.pdf',
             n_rows=2, n_cols=len(whole_obs_metrics['annual']),
-            cmap_colors=(0, 1, 11), cmap_first_color=1,
-            cmap_min=0, cmap_max=6, tick_bool=False, 
-            orientation=None,
+            color='hot_r',
+            cmap_colors=[(0, 1, 11)]*2, cmap_first_color=[1]*2,
+            cmap_min=[0]*2, cmap_max=[6]*2, tick_bool=False, 
+            x_map=predictands_map, y_map=metrics_map,
             var='tasmean', fontsize=16
     )
     del whole_obs, whole_obs_metrics, obs
@@ -88,16 +91,16 @@ if '1' in FIGS:
             vmin=[0, 0], vmax=[1.5, 1.5],
             fig_path=FIGS_PATH, fig_name=f'fig1_metrics_standard_deviation_whole.pdf',
             n_rows=2, n_cols=len(std_metrics),
-            cmap_colors=(0, 1, 11), cmap_first_color=1,
-            cmap_min=0, cmap_max=6, tick_bool=False, title='Std'
+            cmap_colors=[(0, 1, 11)]*2, cmap_first_color=(1, 1),
+            cmap_min=(0, 0), cmap_max=(6, 6), tick_bool=False, title='Std'
     )
 
             
     del total_metrics, total_metrics_concatened, std_metrics
     print("Figura 1 completada!")
 
+
 ### # FIG2 # ####
-from matplotlib.colors import ListedColormap, BoundaryNorm
 import cartopy.crs as ccrs
 if '2' in FIGS:
     stat_metrics = ['rmse', 'bias', 'bias99']
@@ -127,7 +130,7 @@ if '2' in FIGS:
         stat_realizations = {f'{stat}': [] for stat in stat_metrics}
 
         for predictand_number in predictand_numbered:
-            modelName = f'deepesd_{predictand_number}_2004-01-01-2015-12-31'#f'DeepESD_tas_{predictand_number}' 
+            modelName = f'deepesd_{predictand_number}_2004-01-01-2015-12-31'
             loaded_test = xr.open_dataset(f'{PREDS_PATH_TEST}predTest_{modelName}.nc')
             rmse = np.sqrt((((loaded_test - loaded_test_obs)**2).mean(dim=['time']))['tasmean'])
             bias = np.abs(loaded_test.mean(['time'])['tasmean'] - loaded_test_obs.mean(['time'])['tasmean'])
@@ -143,22 +146,23 @@ if '2' in FIGS:
             stat_concat = xr.concat(realization_list, dim='member')
             stat_realization_mean[stat_name][predictand_name] = stat_concat.mean(dim='member')
 
-    figName = f'fig2_rmse_error_{ENSEMBLE_QUANTITY}'
+    figName = f'fig2_rmse_error_{ENSEMBLE_QUANTITY}.pdf'
     # Crear la figura y los ejes
     fig, axes = plt.subplots(3, 5, figsize=(20, 9), sharex=False, sharey=False, subplot_kw={'projection': ccrs.PlateCarree()})
     inverted_stat_realization = {k: {i: d[k] for i, d in stat_realization_mean.items()} for k in next(iter(stat_realization_mean.values()))}
+    rows = len(stat_metrics)
 
     utils.create_multi_graph(
             data = inverted_stat_realization,
             vmin=[0, 0, 0], vmax=[2, 2, 2],
             fig_path=FIGS_PATH, fig_name=figName, 
-            n_rows=len(stat_metrics), n_cols=len(predictands),
-            cmap_colors=(0, 1, 20),
-            cmap_first_color=0, cmap_last_color=20,             
+            n_rows=rows, n_cols=len(predictands),
+            cmap_colors=[(0, 1, 20)]*rows,
+            cmap_first_color=[0]*rows, cmap_last_color=[20]*rows,
             color='viridis_r',
-            cmap_min=0, cmap_max=6, tick_bool=False, 
+            cmap_min=(0,)*rows, cmap_max=(6,)*rows, tick_bool=False, 
             orientation='horizontal', spacing='uniform',
-            var='tasmean', fontsize=15,
+            var=None, fontsize=15,
             title=None, x_map=predictands_map, y_map=stats_map
     )
 
@@ -173,78 +177,41 @@ if '2' in FIGS:
         error_std[stat_name]['all'] = xr.concat(rmse_bias_mean_list[stat_name], dim='member').std(dim='member')
         title = 'Std' if j==0 else None
         utils.create_multi_graph(
-                data = stat_metrics,
+                data = error_std,
                 vmin=[0, 0, 0], vmax=[1, 1, 1],
-                fig_path=FIGS_PATH, fig_name=f'fig2_std_error_{ENSEMBLE_QUANTITY}_{stat_name}', 
+                fig_path=FIGS_PATH, fig_name=f'fig2_std_error_{ENSEMBLE_QUANTITY}_{stat_name}.pdf', 
                 n_rows=1, n_cols=1,
-                cmap_colors=(0, 1, 11),
-                cmap_first_color=1,
+                cmap_colors=[(0, 1, 11)],
+                cmap_first_color=[1],
                 color='cool',
-                cmap_min=0, cmap_max=6, tick_bool=False, 
+                cmap_min=[0], cmap_max=[6], tick_bool=False, 
                 orientation='horizontal', spacing='uniform',
-                var='tasmean', fontsize=15,
+                var=None, fontsize=15,
                 title=title
         )
     
-        # discreteCMAPnoWhite2 = ListedColormap(continuousCMAP2(np.linspace(0, 1, vmaxMetric[stat_name][2]+1)[1:]))
-        # figName = '
-        # # Crear la figura y los ejes
-        # fig, axes = plt.subplots(1, 1, figsize=(4, 3), sharex=False, sharey=False, subplot_kw={'projection': ccrs.PlateCarree()})
-
-        # rmse_bias_mean_list = {key: list(value.values()) for key, value in stat_realization_mean.items()}
-        # error_std[stat_name]['all'] = xr.concat(rmse_bias_mean_list[stat_name], dim='member').std(dim='member')   
-
-        # data_to_plot = {'all-std': None}
-        # data_to_plot['all-std'] = error_std[stat_name]['all']
-
-        # ax1 = axes
-
-        # if stat_name == 'rmse':
-        #     ax1.set_title(f'Std', fontsize=16)
-
-        # ax1.coastlines(resolution='10m')
-
-        # im1 = ax1.pcolormesh(data_to_plot['all-std'].coords['lon'].values, data_to_plot['all-std'].coords['lat'].values,
-        #                     data_to_plot['all-std'],
-        #                     transform=ccrs.PlateCarree(),
-        #                     cmap=discreteCMAPnoWhite2,
-        #                     vmin=vminMetric[stat_name][0], vmax=vmaxMetric[stat_name][0])
-
-        #position = [0.125, 0.055, 0.776, 0.065]
-        # utils._add_colorbar(fig=fig, im=im, position=position,
-        #                 vmin=vminMetric[stat_name][0],
-        #                 vmax=vmaxMetric[stat_name][0],
-        #                 cmap_max=6, fontsize=15,
-        #                 tick_bool=False, orientation='horizontal')
-
-
-
-        # #TODO plt.subplots_adjust(top=0.95, bottom=0.05, wspace=0.2, hspace=0.002)
-        # plt.savefig(f'{FIGS_PATH}{figName}.pdf', bbox_inches='tight')
-        # plt.close()
-
-    #del stat_realization_mean, error_std, data_to_plot, predictands_total_mean, predictands_group_mean, stat_realizations
-
     print("Figura 2 completada!")
+
+
 ### # FIG3 # ####
 if '3' in FIGS:
     
 
-    metric_label = {'Mean': 'Mean', '99Percentile': '99th'}
-    position = [0.125, 0.510 - (j * 0.443), 0.776, 0.02]
+    metric_label = {'mean': 'Mean', 'std': 'Std'}
 
     metrics = ['Mean', '99Percentile']
     # climatology - CCSIGNAL
-    vminMetric = {'Mean': {'mean':4.6, 'std': 0.05, 'm-cmap':4, 'std-cmap':0}, 
-                  '99Percentile': {'mean':5, 'std': 0.25, 'm-cmap':2, 'std-cmap':2}}
-    vmaxMetric = {'Mean': {'mean':8.6, 'std': 0.85, 'm-cmap':14, 'std-cmap':8}, 
-                  '99Percentile': {'mean':13, 'std': 1.25, 'm-cmap':22, 'std-cmap':12}}
+    vminMetric = {'Mean': {'mean':4.6, 'std': 0.05, 'm-ticks':4, 'std-ticks':0, 'm-cmap':4, 'std-cmap':0, 'std-cmap-short':0}, 
+                  '99Percentile': {'mean':5, 'std': 0.25,  'm-ticks':2, 'std-ticks':2,'m-cmap':2, 'std-cmap':2, 'std-cmap-short':0}}
+    vmaxMetric = {'Mean': {'mean':8.6, 'std': 0.85, 'm-ticks':15, 'std-ticks':9, 'm-cmap':14, 'std-cmap':8, 'std-cmap-short':5}, 
+                  '99Percentile': {'mean':13, 'std': 1.25, 'm-ticks':23, 'std-ticks':13, 'm-cmap':22, 'std-cmap':13, 'std-cmap-short':5}}
+    
+    data_predictands = {key: {predictand_name: {} for predictand_name in predictands} for key in metrics}
     for metric in metrics:
-        figName = f'fig3_Statistics_CCSignal_{ENSEMBLE_QUANTITY}_{metric}_part1'
+        figName = f'fig3_Statistics_CCSignal_{ENSEMBLE_QUANTITY}_{metric}_part1.pdf'
         # Crear la figura y los ejes
         fig, axes = plt.subplots(2, 5, figsize=(20, 6), sharex=False, sharey=False, subplot_kw={'projection': ccrs.PlateCarree()})
        
-
         predictands_total_mean = []
         predictands_group_mean = []
 
@@ -269,8 +236,9 @@ if '3' in FIGS:
 
             grided_mean_list = []
             for predictand_number in predictand_numbered:
-                modelName = f'DeepESD_tas_{predictand_number}' 
-                loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{future_3[0]}-{future_3[1]}.nc')
+                modelName = f'deepesd_{predictand_number}' 
+                loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsGCM[0]}-{yearsGCM[1]}.nc')
+                loaded_data = loaded_data.sel(time=slice(*future_3))
                 if metric == '99Percentile':
                     loaded_data = loaded_data.resample(time = 'YE').quantile(0.99, dim = 'time')
                 mean_time = loaded_data.mean(dim='time')
@@ -281,103 +249,53 @@ if '3' in FIGS:
             predictand_data['mean'] = predictand_data_ensemble.mean('member')
             predictand_data['std'] = predictand_data_ensemble.std('member')
             predictands_total_mean.append(predictand_data['mean'])
+            
+            data_predictands[metric][predictand_name]['mean'] = predictand_data['mean']
+            data_predictands[metric][predictand_name]['std'] = predictand_data['std']
+            del predictand_data_ensemble, predictand_data
+
             #TODO REVISAR ABAJO Y CREAR data_predictands con los datos de cada predictando de mean y std
-        vminMetric = {'Mean': {'mean':4.6, 'std': 0.05, 'm-cmap':4, 'std-cmap':0}, 
-                  '99Percentile': {'mean':5, 'std': 0.25, 'm-cmap':2, 'std-cmap':2}}
-    vmaxMetric = {'Mean': {'mean':8.6, 'std': 0.85, 'm-cmap':14, 'std-cmap':8}, 
-                  '99Percentile': {'mean':13, 'std': 1.25, 'm-cmap':22, 'std-cmap':12}}
+
         utils.create_multi_graph(
-                data = stat_metrics,
-                vmin=[vminMetric[metric]['mean'], vminMetric[metric]['std']], vmax=[vmaxMetric[metric]['mean'], vmaxMetric[metric]['std']],
+                data = data_predictands[metric],
+                vmin=[vminMetric[metric]['mean'], vminMetric[metric]['std']],
+                vmax=[vmaxMetric[metric]['mean'], vmaxMetric[metric]['std']],
                 fig_path=FIGS_PATH, fig_name=figName, 
                 n_rows=len(metrics), n_cols=len(data_predictands[metric]),
-                cmap_colors=[(0, 1, 22), (0, 1, 11)],#REVISAR
-                cmap_first_color=1, cmap_last_color=
-                color='hot_r',
-                cmap_min=0, cmap_max=6, tick_bool=False, 
+                cmap_colors=((0, 1, 23), (0, 1, 12)),
+                cmap_first_color=(vminMetric[metric]['m-cmap'], vminMetric[metric]['std-cmap']),
+                cmap_last_color=(vmaxMetric[metric]['m-cmap'], vmaxMetric[metric]['std-cmap']),
+                color=['hot_r', 'cool'],
+                cmap_min=(vminMetric[metric]['m-ticks'], vminMetric[metric]['std-ticks']),
+                cmap_max=(vmaxMetric[metric]['m-ticks'], vmaxMetric[metric]['std-ticks']), 
+                tick_bool=False, 
                 orientation='horizontal', spacing='uniform',
                 var='tasmean', fontsize=16,
-                title=title
-        )
-        #     for j, (metric_fig, metric_data) in enumerate(predictand_data.items()):
-        #         if metric_fig == 'mean':
-        #             vmin = vminMetric[metric]['mean']
-        #             vmax = vmaxMetric[metric]['mean']
-        #             num_ticks = 22
-        #         elif metric_fig == 'std':
-        #             vmin = vminMetric[metric]['std']
-        #             vmax = vmaxMetric[metric]['std']
-        #             num_ticks = 11
+                x_map=predictands_map, y_map=metric_label)
 
-        #         ax = axes[j, i]
-        #         if j == 0:
-        #             ax.set_title(f'{predictands_map[predictand_name]}', fontsize=16)
-        #         if i == 0:
-        #             metric_row = metric_label.get(metric, 'Std') if j==0 else 'Std'
-
-        #             ax.text(-0.07, 0.55, f'{metric_row}', va='bottom', ha='center',
-        #                 rotation='vertical', rotation_mode='anchor',
-        #                 transform=ax.transAxes, fontsize=16)
-
-        #         pos = 'm-cmap' if metric_fig=='mean' else 'std-cmap'
-        #         cmap_min = vminMetric[metric][pos]
-        #         cmap_max = vmaxMetric[metric][pos]
-        #         continuousCMAP = plt.get_cmap('hot_r') if metric_fig == 'mean' else plt.get_cmap('cool')
-        #         discreteCMAPnoWhite = ListedColormap(continuousCMAP(np.linspace(0, 1, num_ticks+1)[cmap_min:cmap_max]))
-
-        #         ax.coastlines(resolution='10m')
-        #         dataToPlot = metric_data['tasmean']
-        #         im = ax.pcolormesh(dataToPlot.coords['lon'].values, dataToPlot.coords['lat'].values,
-        #                             dataToPlot,
-        #                             transform=ccrs.PlateCarree(),
-        #                             cmap=discreteCMAPnoWhite,
-        #                             vmin=vmin, vmax=vmax)
-
-        #         if i == 0:
-        #             utils._add_colorbar(fig, im, position, vmin, vmax, cmap_min, cmap_max+1, fontsize=16)
-                    
-
-        # plt.subplots_adjust(top=0.95, bottom=0.05, wspace=0.002, hspace=0.002)
-        # plt.savefig(f'{FIGS_PATH}{figName}.pdf', bbox_inches='tight')
-        # plt.close()
-
-        data = {}
-        continuousCMAP2 = plt.get_cmap('cool')
-        num_ticks = 11
-        discreteCMAP2 = ListedColormap(continuousCMAP2(np.linspace(0, 1, num_ticks)[vminMetric[metric][3]:vmaxMetric[metric][3]]))
-        discreteCMAPnoWhite2 = ListedColormap(continuousCMAP2(np.linspace(0, 1, num_ticks+1)[vminMetric[metric][3]:vmaxMetric[metric][3]]))
-
-        figName = f'fig3_Statistics_CCSignal_{ENSEMBLE_QUANTITY}_{metric}_part2'
-        # Crear la figura y los ejes
-        fig, axes = plt.subplots(1, 1, figsize=(4, 3), sharex=False, sharey=False, subplot_kw={'projection': ccrs.PlateCarree()})
-
-        data_to_plot = {'all-std': None}
+        figName = f'fig3_Statistics_CCSignal_{ENSEMBLE_QUANTITY}_{metric}_part2.pdf'
         mean_combined = xr.concat(predictands_total_mean, dim='member')
-        data_to_plot['all-std'] = mean_combined.std(dim='member')
-
-        vmin = vminMetric[metric][1]
-        vmax = vmaxMetric[metric][1]
-
-        ax1 = axes
-        ax1.set_title(f'Std', fontsize=16)
-        ax1.coastlines(resolution='10m')
-
-        im1 = ax1.pcolormesh(data_to_plot['all-std']['tasmean'].coords['lon'].values, data_to_plot['all-std']['tasmean'].coords['lat'].values,
-                            data_to_plot['all-std']['tasmean'],
-                            transform=ccrs.PlateCarree(),
-                            cmap=discreteCMAPnoWhite2,
-                            vmin=vmin, vmax=vmax)
+        data_std = {'std': {'all-std': mean_combined.std(dim='member')}}
+        utils.create_multi_graph(
+                data = data_std,
+                vmin=[vminMetric[metric]['std']], vmax=[vmaxMetric[metric]['std']],
+                fig_path=FIGS_PATH, fig_name=figName, 
+                n_rows=1, n_cols=1,
+                cmap_colors=[(0, 1, 11)],
+                cmap_first_color=[vminMetric[metric]['std-cmap']],
+                cmap_last_color=[vmaxMetric[metric]['std-cmap']],
+                color='cool',
+                cmap_min=[vminMetric[metric]['std-cmap-short']],
+                cmap_max=[vmaxMetric[metric]['std-cmap-short']], 
+                tick_bool=False, 
+                orientation='horizontal', spacing='uniform',
+                var='tasmean', fontsize=16,
+                title='Std'
+        )
         
-        utils._add_colorbar(fig, im, position, vmin, vmax, fontsize=16)
 
-        plt.subplots_adjust(top=0.95, bottom=0.05, wspace=0.002, hspace=0.002)
-        plt.savefig(f'{FIGS_PATH}{figName}.pdf', bbox_inches='tight')
-        plt.close()
-
-    del predictand_data, predictand_data_ensemble, mean_combined, predictands_total_mean, predictands_group_mean, mean_list
-
+    del mean_combined, predictands_total_mean, predictands_group_mean, mean_list
     print("Figura 3 completada!")
-
 
 
 ### # FIG 4 # ####
@@ -385,17 +303,17 @@ if '4' in FIGS:
     shape_name_list = ['Iberia', 'Pirineos', 'Tinto', 'Duero']
     #*********************************************************************+
     references_grid = {shape: [] for shape in shape_name_list}
-    reference_grid = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_DeepESD_tas_AEMET_0.25deg_1_{GCM_NAME}_{MAIN_SCENARIO}_{future_1[0]}-{future_1[1]}.nc')
+    reference_grid = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_deepesd_AEMET_0.25deg_1_{GCM_NAME}_{MAIN_SCENARIO}_{yearsGCM[0]}-{yearsGCM[1]}.nc')
     reference_grid = reference_grid.sel(time=slice(future_1[0],'2021-01-02'))
     for shape in shape_name_list:
         if shape == 'Iberia':
             references_grid[shape] = None
         elif shape == 'Pirineos':
-            references_grid[shape] = reference_grid.sel(lons=(-0.37, 3.37), lats=(41.42, 42.80))
+            references_grid[shape] = reference_grid.sel(lon=slice(-0.37, 3.37), lat=slice(41.42, 42.80))
         elif shape == 'Duero':
-            references_grid[shape] = reference_grid.sel(lons=(-6.59, -4.75), lats=(40.85, 42.45))
+            references_grid[shape] = reference_grid.sel(lon=slice(-6.59, -4.75), lat=slice(40.85, 42.45))
         elif shape == 'Tinto':
-            references_grid[shape] = reference_grid.sel(lons=(-7.23, -5.20), lats=(36.00, 38.20))
+            references_grid[shape] = reference_grid.sel(lon=slice(-7.23, -5.20), lat=slice(36.00, 38.20))
 
 
     # GRAFICOS BOXPLOT PARA SHORT, MEDIUM y LONG / CCSIGNAL
@@ -442,8 +360,9 @@ if '4' in FIGS:
                 predictand_numbered = [f"{predictand_name}_{i}" for i in range(1, ENSEMBLE_QUANTITY+1)]
 
                 for predictand_number in predictand_numbered:
-                    modelName = f'DeepESD_tas_{predictand_number}' 
-                    loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{period[0]}-{period[1]}.nc')
+                    modelName = f'deepesd_{predictand_number}' 
+                    loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsGCM[0]}-{yearsGCM[1]}.nc')
+                    loaded_data = loaded_data.sel(time=slice(*(period[0], period[1])))
                     grided_data = loaded_data.sel(
                         lat=references_grid[shape].lat,
                         lon=references_grid[shape].lon,
@@ -520,11 +439,7 @@ if '4' in FIGS:
     
 ### # FIG5 # ####
 if '5' in FIGS:
-    figName = f'fig5_extremes_ccsignals_Ensemble{ENSEMBLE_QUANTITY}'
-    # fig, axes = plt.subplots(2, 5, figsize=(20, 6), sharex=False, sharey=False, subplot_kw={'projection': ccrs.PlateCarree()})
-
-    # continuousCMAP = plt.get_cmap('hot_r')
-    # discreteCMAPnoWhite = ListedColormap(continuousCMAP(np.linspace(0, 1, 11)[1:]))
+    figName = f'fig5_extremes_ccsignals_Ensemble{ENSEMBLE_QUANTITY}.pdf'
     graph_data = {}
 
     for i, predictand_name in enumerate(predictands):
@@ -544,13 +459,14 @@ if '5' in FIGS:
 
         # Future Data
         predictand_data = {}
-        predictand_data_mean = {}
+        predictand_data_mean = {'min_mean': None, 'max_mean': None, 'min_99': None, 'max_99': None}
         number_min_max = {}
 
         for p_num in range(1, ENSEMBLE_QUANTITY+1):
             
-            modelName = f'DeepESD_tas_{predictand_name}_{p_num}' 
-            loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{future_3[0]}-{future_3[1]}.nc')
+            modelName = f'deepesd_{predictand_name}_{p_num}'
+            loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsGCM[0]}-{yearsGCM[1]}.nc')
+            loaded_data = loaded_data.sel(time=slice(*(future_3[0], future_3[1])))
             
 
             grided_mean = loaded_data.mean(dim=['time', 'lat', 'lon']) 
@@ -565,8 +481,13 @@ if '5' in FIGS:
             for key, value in {'min_mean': (mean_time, grided_mean['tasmean'].values),
                             'max_mean': (mean_time, grided_mean['tasmean'].values),
                             'min_99': (mean_time_99, grided_mean_99['tasmean'].values),
-                            'max_99': (mean_time_99, grided_mean_99['tasmean'].values)}:
-                if predictand_data_mean[key] == None or value[1] < predictand_data_mean[key]:
+                            'max_99': (mean_time_99, grided_mean_99['tasmean'].values)}.items():
+                if (predictand_data_mean[key] == None 
+                    or (value[1] < predictand_data_mean[key] and 'min' in key)
+                    or (value[1] > predictand_data_mean[key] and 'max' in key)):
+                    print(modelName)
+                    print(predictand_data_mean)
+                    print(key)
                     predictand_data_mean[key] = value[1]
                     predictand_data[key] = value[0]
                     number_min_max[key] = p_num
@@ -579,57 +500,21 @@ if '5' in FIGS:
 
     # GRAFICOS
     utils.create_multi_graph(
-            data = stat_metrics,
+            data = graph_data,
             vmin=[0, 0], vmax=[2, 4],
             fig_path=FIGS_PATH, fig_name=figName, 
             n_rows=2, n_cols=len(graph_data),
-            cmap_colors=(0, 1, 11),
-            cmap_first_color=[1, 1], cmap_last_color=[6, 11]
+            cmap_colors=[(0, 1, 11)]*2,
+            cmap_first_color=[1, 1], cmap_last_color=[6, 11],
             color='hot_r',
-            cmap_min=0, cmap_max=6, tick_bool=False, 
+            cmap_min=[0]*2, cmap_max=[6]*2, tick_bool=False, 
             orientation='horizontal', spacing='uniform',
             var='tasmean', fontsize=15,
             x_map=predictands_map, y_map={'Rmax-Rmin (Mean)': 'Rmax-Rmin (Mean)', 'Rmax-Rmin (99th)': 'Rmax-Rmin (99th)'}
     )
-    #     vmax = {'Rmax-Rmin (Mean)': 2, 'Rmax-Rmin (99th)': 4}
-    #     vmin = {'Rmax-Rmin (Mean)': 0, 'Rmax-Rmin (99th)': 0}
-
-    #     colors = {'Rmax-Rmin (Mean)': (1, 6), 'Rmax-Rmin (99th)': (1, 11)}
-    #     for j, (metric, metric_data) in enumerate(predictand_data_final.items()):
-            
-    #         discreteCMAPnoWhite = ListedColormap(continuousCMAP(np.linspace(0, 1, 11)[colors[metric][0]:colors[metric][1]]))
-    #         ax = axes[j, i]
-    #         if j == 0:
-    #             ax.set_title(f'{predictands_map[predictand_name]}', fontsize=16)
-    #         if i == 0:
-    #             ax.text(-0.07, 0.55, f'{metric}', va='bottom', ha='center',
-    #                 rotation='vertical', rotation_mode='anchor',
-    #                 transform=ax.transAxes, fontsize=16)
-
-    #         ax.coastlines(resolution='10m')
-            
-
-    #         dataToPlot = metric_data['tasmean']
-    #         im = ax.pcolormesh(dataToPlot.coords['lon'].values, dataToPlot.coords['lat'].values,
-    #                             dataToPlot,
-    #                             transform=ccrs.PlateCarree(),
-    #                             cmap=discreteCMAPnoWhite,
-    #                             vmin=vmin[metric], vmax=vmax[metric])
-            
-    #         if i == 0:
-    #             position = [0.125, 0.510 - (j * 0.443), 0.776, 0.02]
-    #             utils._add_colorbar(fig=fig, im=im, position=position,
-    #                     vmin=vmin[metric],
-    #                     vmax=vmax[metric],
-    #                     cmap_max=6,
-    #                     orientation='horizontal')
-
-
-    # plt.subplots_adjust(top=0.95, bottom=0.05, wspace=0.002, hspace=0.002)
-    # plt.savefig(f'{FIGS_PATH}{figName}.pdf', bbox_inches='tight')
-    # plt.close()
-
+ 
     print("Figura 5 completada!")
+
 
 ### # FIG6 # ####
 if '6' in FIGS:
@@ -666,8 +551,9 @@ if '6' in FIGS:
 
             predictand_numbered = [f"{predictand_name}_{i}" for i in range(1, ENSEMBLE_QUANTITY+1)]
             for predictand_number in predictand_numbered:
-                modelName = f'DeepESD_tas_{predictand_number}' 
-                loaded_test = xr.open_dataset(f'{PREDS_PATH_TEST}predTest_{modelName}.nc')
+                modelName = f'deepesd_{predictand_number}'
+                print(modelName)
+                loaded_test = xr.open_dataset(f'{PREDS_PATH_TEST}predTest_{modelName}_{yearsTest[0]}-{yearsTest[1]}.nc')
                 rmse = np.sqrt((((loaded_test - loaded_test_obs)**2).mean(dim=['time', 'lat', 'lon']))['tasmean'])
                 rmse_test.append(rmse)
 
@@ -676,7 +562,8 @@ if '6' in FIGS:
                 test_pred.append(loaded_test.mean(dim=['time', 'lat', 'lon'])['tasmean'])
 
                 
-                loaded_pred = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{future_3[0]}-{future_3[1]}.nc')
+                loaded_pred = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsGCM[0]}-{yearsGCM[1]}.nc')
+                loaded_pred = loaded_pred.sel(time=slice(*(future_3[0], future_3[1])))
                 if metric == '99Percentile':
                     loaded_pred = loaded_pred.resample(time = 'YE').quantile(0.99, dim = 'time')
                 gcm_pred.append(loaded_pred.mean(dim=['time', 'lat', 'lon'])['tasmean'])
@@ -703,8 +590,8 @@ if '6' in FIGS:
             ax.plot([valuesMinMax[metric][0], valuesMinMax[metric][3]], [valuesMinMax[metric][0], valuesMinMax[metric][3]], color='black', linestyle='-', linewidth=1.5)
 
         # Labels and legend
-        ax.set_xlim(valuesMinMax[metric][0], valuesMinMax[metric][3])#ax.set_xlim(np.floor(min([da.values.item() for da in gcm_pred])), np.ceil(max([da.values.item() for da in gcm_pred])))
-        ax.set_ylim(valuesMinMax[metric][0], valuesMinMax[metric][3])#ax.set_ylim(np.floor(min([da.values.item() for da in test_pred])), np.ceil(max([da.values.item() for da in test_pred])))
+        ax.set_xlim(valuesMinMax[metric][0], valuesMinMax[metric][3])
+        ax.set_ylim(valuesMinMax[metric][0], valuesMinMax[metric][3])
         ax.set_xlabel('Temperature Test', fontsize=12)
         ax.set_ylabel('Temperature Long', fontsize=12)
         ax.set_title('Long vs Test', fontsize=14)
@@ -713,7 +600,6 @@ if '6' in FIGS:
         # Show grid for better readability
         ax.grid(True, linestyle='--', alpha=0.5)
         plt.subplots_adjust(top=0.95, bottom=0.05, wspace=0.002, hspace=0.002)
-        plt.savefig(f'{FIGS_PATH}{figName}.png', bbox_inches='tight')
         plt.savefig(f'{FIGS_PATH}{figName}.pdf', bbox_inches='tight')
         plt.close()
 
@@ -745,9 +631,56 @@ if '6' in FIGS:
         # Show grid for better readability
         ax.grid(True, linestyle='--', alpha=0.5)
         plt.subplots_adjust(top=0.95, bottom=0.05, wspace=0.002, hspace=0.002)
-        plt.savefig(f'{FIGS_PATH}{figName}.png', bbox_inches='tight')
         plt.savefig(f'{FIGS_PATH}{figName}.pdf', bbox_inches='tight')
         plt.close()
 
 
     print("Figura 6 completada!")
+
+
+if FIGS=='7':
+    # Crear figura y ejes
+    fig = plt.figure(figsize=(10, 8))
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_extent([-10, 5, 35, 45])
+
+    # Elementos geográficos
+    ax.add_feature(cfeature.COASTLINE)
+    ax.add_feature(cfeature.BORDERS, linestyle=':')
+    ax.add_feature(cfeature.RIVERS)
+    ax.add_feature(cfeature.LAND, edgecolor='black')
+
+    # Definir regiones como rectángulos: (nombre, lat_min, lat_max, lon_min, lon_max)
+    regions = [
+        ("Meseta Central", 39.0, 41.5, -6.5, -2.5, "lightgrey"),
+        ("Cantabrian Mountains", 42.5, 43.5, -7.0, -2.5, "lightgrey"),
+        ("Ebro Valley", 40.5, 42.5, -2.0, 1.5, "lightgrey"),
+        ("Pyrenees", 41.42, 42.8, -0.37, 3.37, "lightgrey"),
+        ("Sierra Nevada", 36.7, 37.2, -3.6, -2.8, "lightgrey"),
+        ("Guadalquivir Valley", 36.8, 38.5, -6.5, -3.5, "lightgrey")
+    ]
+
+    # Añadir regiones como rectángulos de color
+    for name, lat_min, lat_max, lon_min, lon_max, color in regions:
+        width = lon_max - lon_min
+        height = lat_max - lat_min
+        rect = Rectangle((lon_min, lat_min), width, height,
+                        linewidth=1.5, edgecolor='black',
+                        facecolor=color, alpha=0.4,
+                        transform=ccrs.PlateCarree())
+        ax.add_patch(rect)
+        # Etiqueta en el centro de cada región
+        ax.text(lon_min + width / 2, lat_min + height / 2, name,
+                fontsize=9, ha='center', va='center',
+                transform=ccrs.PlateCarree(), bbox=dict(facecolor='white', alpha=0.6))
+
+    # Cuadrícula
+    ax.gridlines(draw_labels=True)
+
+    # Título y guardar
+    plt.title("Geographical Regions of the Iberian Peninsula", fontsize=14)
+    plt.tight_layout()
+    plt.savefig(f"{FIGS_PATH}Toponomias.pdf", bbox_inches='tight')
+    plt.close()
+
+    print("Figura 7 completada!")

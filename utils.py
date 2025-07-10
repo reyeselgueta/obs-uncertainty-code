@@ -11,34 +11,47 @@ import os
 def create_multi_graph(
             data, #{'AxisY': {'AxisX': data}}
             vmin, vmax, # [], []
-            fig_path, fig_name, n_rows, n_cols,
-            cmap_colors=(0, 1, 10),
+            fig_path, fig_name,
+            n_rows, n_cols,
+            cmap_min=None, cmap_max=None,
+            cmap_colors=((0, 1, 10)),
             cmap_first_color=[0], cmap_last_color=[None],             
             color='cool',
-            cmap_min=0, cmap_max=6, tick_bool=False, 
+            tick_bool=False, 
             orientation='horizontal', spacing='uniform',
             var='tasmean', fontsize=16,
             title=None, x_map=None,
             y_map=None, y_map_pos=(-0.07, 0.55)
     ):
-        continuousCMAP = plt.get_cmap(color)
         
+        cmap_last_color = cmap_last_color*n_rows if cmap_last_color==[None] else cmap_last_color
+        color = color if isinstance(color, list) else [color]*n_rows
 
         fig, axes = plt.subplots(n_rows, n_cols, figsize=(4*n_cols, 3*n_rows), sharex=False, sharey=False, subplot_kw={'projection': ccrs.PlateCarree()})
         for i, (predictand_name, predictand_data) in enumerate(data.items()): 
             for j, (metric, metric_data) in enumerate(predictand_data.items()): #metric
                 #Color map for Row 
-                discreteCMAP = ListedColormap(continuousCMAP(np.linspace(*cmap_colors)[cmap_first_color[j]:cmap_last_color[j]]))
-                ax = axes[j, i]
-                if j == 0:
+                continuousCMAP = plt.get_cmap(color[j])
+                discreteCMAP = ListedColormap(continuousCMAP(np.linspace(*cmap_colors[j])[cmap_first_color[j]:cmap_last_color[j]]))
+
+                if n_cols == 1 and n_rows == 1:
+                    ax = axes
+                elif n_cols == 1:
+                    ax = axes[j]
+                elif n_rows == 1:
+                    ax = axes[i]
+                else:
+                    ax = axes[j, i]
+
+                if j == 0 and (title is not None or x_map is not None):
                     ax.set_title(title if title!=None else f'{x_map[predictand_name]}', fontsize=fontsize)
-                if i == 0:
+                if i == 0 and y_map is not None:
                     ax.text(y_map_pos[0], y_map_pos[1], f'{y_map[metric]}', va='bottom', ha='center',
                         rotation='vertical', rotation_mode='anchor',
                         transform=ax.transAxes, fontsize=fontsize)
                 ax.coastlines(resolution='10m')            
 
-                dataToPlot = metric_data[var]
+                dataToPlot = metric_data if var is None else metric_data[var]
                 im = ax.pcolormesh(dataToPlot.coords['lon'].values, dataToPlot.coords['lat'].values,
                                     dataToPlot,
                                     transform=ccrs.PlateCarree(),
@@ -56,8 +69,8 @@ def create_multi_graph(
                     _add_colorbar(fig=fig, im=im, position=position,
                             vmin=vmin[j],
                             vmax=vmax[j],
-                            cmap_min=cmap_min,
-                            cmap_max=cmap_max,
+                            cmap_min=cmap_min[j],
+                            cmap_max=cmap_max[j],
                             tick_bool=tick_bool, 
                             orientation=orientation,
                             spacing=spacing,
@@ -242,21 +255,21 @@ def get_metrics_temp(data, data_reference = None, var = 'tasmean', short = False
 
     if short:
         response = {
-        'mean': val_mean,
-        '99quantile': val_99
+        'Mean': val_mean,
+        '99th': val_99
         }
     else:
         response = {
-        'mean': val_mean,
-        '99quantile': val_99,
-        '1quantile': val_1,
-        'std': val_st,
-        'std_annual' : val_st_interannual,
-        'trend': val_mean_annual,
-        'over30': over30,
-        'over40': over40,
-        'mean_max_mean': mean_max_mean,
-        'crps': crps
+        'Mean': val_mean,
+        '99th': val_99,
+        '1th': val_1,
+        'Std': val_st,
+        'Std_annual' : val_st_interannual,
+        'Trend': val_mean_annual,
+        'Over30': over30,
+        'Over40': over40,
+        'Mean_max_mean': mean_max_mean,
+        'Crps': crps
         }
 
     return response
@@ -482,3 +495,170 @@ class flattenSpatialGrid():
             finalGrid = finalGrid.reindex(lat=list(reversed(finalGrid.lat)))
 
         return finalGrid
+    
+
+
+
+
+# import matplotlib.pyplot as plt
+# import cartopy.crs as ccrs
+# import cartopy.feature as cfeature
+# import os
+
+# # Ruta donde guardar la figura
+# FIGS_PATH = '/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling/notebooks/figures/'
+
+# os.makedirs(FIGS_PATH, exist_ok=True)
+
+# # Crear figura
+# fig = plt.figure(figsize=(10, 8))
+# ax = plt.axes(projection=ccrs.PlateCarree())
+
+# # Definir extensión: [long_min, long_max, lat_min, lat_max]
+# ax.set_extent([-10, 5, 35, 45])
+
+# # Añadir elementos geográficos
+# ax.add_feature(cfeature.COASTLINE)
+# ax.add_feature(cfeature.BORDERS, linestyle=':')
+# ax.add_feature(cfeature.RIVERS)
+# ax.add_feature(cfeature.LAND, edgecolor='black')
+
+# # Etiquetas de toponimias
+# regions = [
+#     ("Meseta Central", 40.3, -4.0),
+#     ("Cantabrian Mountains", 43.0, -5.0),
+#     ("Central System", 40.5, -5.5),
+#     ("Ebro Valley", 41.6, -1.0),
+#     ("Pyrenees", 42.7, 0.8),
+#     ("Sierra Nevada", 37.0, -3.3),
+#     ("Guadalquivir Valley", 37.5, -5.5)
+# ]
+
+# # Añadir nombres al mapa
+# for name, lat, lon in regions:
+#     ax.text(lon, lat, name, fontsize=10, ha='center', transform=ccrs.PlateCarree(),
+#             bbox=dict(facecolor='white', alpha=0.6, boxstyle='round'))
+
+# # Cuadrícula con etiquetas
+# ax.gridlines(draw_labels=True)
+
+# # Título
+# plt.title("Main Geographical Features of the Iberian Peninsula", fontsize=14)
+
+# # Guardar figura
+# plt.tight_layout()
+# plt.savefig(f"{FIGS_PATH}test.pdf", bbox_inches='tight')
+# plt.close()
+
+
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from matplotlib.patches import Rectangle
+import os
+
+# Ruta para guardar el mapa
+FIGS_PATH = '/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling/notebooks/figures/'
+os.makedirs(FIGS_PATH, exist_ok=True)
+
+# Crear figura y ejes
+fig = plt.figure(figsize=(10, 8))
+ax = plt.axes(projection=ccrs.PlateCarree())
+ax.set_extent([-10, 5, 35, 45])
+
+# Elementos geográficos
+ax.add_feature(cfeature.COASTLINE)
+ax.add_feature(cfeature.BORDERS, linestyle=':')
+ax.add_feature(cfeature.RIVERS)
+ax.add_feature(cfeature.LAND, edgecolor='black')
+
+# Definir regiones como rectángulos: (nombre, lat_min, lat_max, lon_min, lon_max)
+regions = [
+    ("Meseta Central", 39.0, 41.5, -6.5, -2.5, "lightgrey"),
+    ("Cantabrian Mountains", 42.5, 43.5, -7.0, -2.5, "lightgrey"),
+   # ("Central System", 39.5, 41.0, -6.5, -3.0, "orange"),
+    ("Ebro Valley", 40.5, 42.5, -2.0, 1.5, "lightgrey"),
+    ("Pyrenees", 42.5, 43.8, -1.5, 2.5, "lightgrey"),
+    ("Sierra Nevada", 36.7, 37.2, -3.6, -2.8, "lightgrey"),
+    ("Guadalquivir Valley", 36.8, 38.5, -6.5, -3.5, "lightgrey")
+]
+
+# Añadir regiones como rectángulos de color
+for name, lat_min, lat_max, lon_min, lon_max, color in regions:
+    width = lon_max - lon_min
+    height = lat_max - lat_min
+    rect = Rectangle((lon_min, lat_min), width, height,
+                     linewidth=1.5, edgecolor='black',
+                     facecolor=color, alpha=0.4,
+                     transform=ccrs.PlateCarree())
+    ax.add_patch(rect)
+    # Etiqueta en el centro de cada región
+    ax.text(lon_min + width / 2, lat_min + height / 2, name,
+            fontsize=9, ha='center', va='center',
+            transform=ccrs.PlateCarree(), bbox=dict(facecolor='white', alpha=0.6))
+
+# Cuadrícula
+ax.gridlines(draw_labels=True)
+
+# Título y guardar
+plt.title("Geographical Regions of the Iberian Peninsula", fontsize=14)
+plt.tight_layout()
+plt.savefig(f"{FIGS_PATH}iberian_regions_colored.pdf", bbox_inches='tight')
+plt.close()
+
+
+
+# import geopandas as gpd
+# import matplotlib.pyplot as plt
+# from shapely.geometry import Polygon
+# import cartopy.crs as ccrs
+# import os
+
+# # Crear carpeta para guardar la figura
+# os.makedirs(FIGS_PATH, exist_ok=True)
+
+# # Crear polígonos para las regiones (estos son aproximados)
+# regions = {
+#     "Meseta Central": Polygon([(-6.5, 39.0), (-6.5, 41.5), (-2.5, 41.5), (-2.5, 39.0)]),
+#     "Cantabrian Mountains": Polygon([(-7.0, 42.5), (-7.0, 43.5), (-2.5, 43.5), (-2.5, 42.5)]),
+#     "Central System": Polygon([(-6.5, 39.5), (-6.5, 41.0), (-3.0, 41.0), (-3.0, 39.5)]),
+#     "Ebro Valley": Polygon([(-2.0, 40.5), (-2.0, 42.5), (1.5, 42.5), (1.5, 40.5)]),
+#     "Pyrenees": Polygon([(-1.5, 42.5), (-1.5, 43.8), (2.5, 43.8), (2.5, 42.5)]),
+#     "Sierra Nevada": Polygon([(-3.6, 36.7), (-3.6, 37.2), (-2.8, 37.2), (-2.8, 36.7)]),
+#     "Guadalquivir Valley": Polygon([(-6.5, 36.8), (-6.5, 38.5), (-3.5, 38.5), (-3.5, 36.8)])
+# }
+
+# # Crear GeoDataFrame
+# gdf = gpd.GeoDataFrame({'Region': list(regions.keys()),
+#                         'geometry': list(regions.values())},
+#                        crs="EPSG:4326")
+
+# # Descargar un mapa base de países (puedes usar Natural Earth a través de GeoPandas)
+# world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+# iberia = world[(world.name == "Spain") | (world.name == "Portugal")]
+
+# # Crear figura con Cartopy
+# fig, ax = plt.subplots(figsize=(10, 8), subplot_kw={'projection': ccrs.PlateCarree()})
+
+# # Plot mapa base
+# iberia.plot(ax=ax, color='lightgray', edgecolor='black')
+
+# # Plot regiones personalizadas
+# gdf.plot(ax=ax, column='Region', alpha=0.4, edgecolor='black', legend=False)
+
+# # Etiquetas
+# for idx, row in gdf.iterrows():
+#     centroid = row.geometry.centroid
+#     ax.text(centroid.x, centroid.y, row["Region"],
+#             ha='center', va='center', fontsize=9, weight='bold',
+#             bbox=dict(facecolor='white', alpha=0.7),
+#             transform=ccrs.PlateCarree())
+
+# # Configuración del mapa
+# ax.set_extent([-10, 5, 35.5, 45])
+# ax.set_title("Main Geographical Regions of the Iberian Peninsula", fontsize=14)
+# ax.gridlines(draw_labels=True)
+
+# # Guardar y cerrar
+# plt.savefig(f"{FIGS_PATH}iberian_regions_geopandas.pdf", bbox_inches='tight')
+# plt.close()
