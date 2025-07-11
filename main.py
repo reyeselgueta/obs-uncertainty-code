@@ -13,15 +13,12 @@ from torch.utils.data import DataLoader, random_split
 BASE_PATH = Path("/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling")#"/vols/abedul/home/meteo/reyess/paper1-code/deep4downscaling")
 sys.path.insert(0, str(BASE_PATH))
 
-import deep4downscaling.viz as deep_viz
 import deep4downscaling.trans as deep_trans
 import deep4downscaling.deep.loss as deep_loss
 import deep4downscaling.deep.utils as deep_utils
 import deep4downscaling.deep.models as deep_models
 import deep4downscaling.deep.train as deep_train
 import deep4downscaling.deep.pred as deep_pred
-import deep4downscaling.metrics as deep_metrics
-import deep4downscaling.metrics_ccs as deep_metrics_css
 
 
 
@@ -63,7 +60,7 @@ predictor = xr.open_mfdataset(
 predictor = deep_trans.remove_days_with_nans(predictor)
 
 # Años a entranar y test
-years_train = ('1980-01-01', '2003-12-31')
+years_train = ('1980-01-01', '2003-12-31')#2003
 years_test = ('2004-01-01', '2015-12-31')
 # Fechas a eliminar
 fechas_a_eliminar = ["1982-02-28", "1986-02-28", "1990-02-28", "1994-02-28", "1998-02-28", "2002-02-28", "2006-02-28", "2010-02-28", "2014-02-28"]
@@ -136,26 +133,28 @@ for predictand_name in predictands_to_train:
     train_dataset = deep_utils.StandardDataset(x=x_train_stand_arr,
                                                                 y=y_train_arr)
 
-    # Split into training and validation sets
-    train_dataset, valid_dataset = random_split(train_dataset,
-                                                [0.9, 0.1])
-
-    # Create DataLoaders
-    batch_size = 64
-
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size,
-                                shuffle=True)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size,
-                                shuffle=True)
+    
 
     for num in range(ensemble_start, ensemble_quantity):
+        # Split into training and validation sets
+        train_dataset, valid_dataset = random_split(train_dataset,
+                                                    [0.9, 0.1])
+
+        # Create DataLoaders
+        batch_size = 64
+
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size,
+                                    shuffle=True)
+        valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size,
+                                    shuffle=True)
+
         model_name = f'deepesd_{predictand_name}_{num}'
         print(f"Comienza el modelo: {model_name}")
 
-        model = deep_models.DeepESDpr(
+        model = deep_models.DeepESDtas(
             x_shape=x_train_stand_arr.shape,
             y_shape=y_train_arr.shape,
-            filters_last_conv=1,
+            filters_last_conv=10,
             stochastic=False
         )
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -184,12 +183,14 @@ for predictand_name in predictands_to_train:
 
 
 years_gcm = ('2081', '2100')
+years_reference = ('1980-01-01', '2014-12-31')
+era5_reference = predictor.sel(time=slice(*years_reference))
 gcm_hist = xr.open_dataset(f'/oceano/gmeteo/users/reyess/d4d-fork/deep4downscaling/notebooks/data/input/EC-Earth3-Veg_historical_r1i1p1f1_19500101-20141231.nc')#TODO ./
 gcm_predictor = xr.open_dataset(f'/oceano/gmeteo/users/reyess/d4d-fork/deep4downscaling/notebooks/data/input/EC-Earth3-Veg_ssp585_r1i1p1f1_20150101-21001231.nc')#TODO ./
 gcm_predictor = gcm_predictor.sel(time=slice(*years_gcm))
 gcm_fut_corrected = deep_trans.scaling_delta_correction(data=gcm_predictor,
-                                                                    gcm_hist=gcm_hist, obs_hist=x_train)
-gcm_fut_corrected_stand = deep_trans.standardize(data_ref=x_train, data=gcm_fut_corrected)
+                                                                    gcm_hist=gcm_hist, obs_hist=era5_reference.load())
+gcm_fut_corrected_stand = deep_trans.standardize(data_ref=x_train.load(), data=gcm_fut_corrected)
 
 
 
@@ -204,9 +205,9 @@ for predictand_name in predictands_to_train:
                                                 drop=True)
 
     y_train_arr = deep_trans.xarray_to_numpy(y_train_stack_filt)
-    model = deep_models.DeepESDpr(x_shape=x_train_stand_arr.shape,
+    model = deep_models.DeepESDtas(x_shape=x_train_stand_arr.shape,
                                                 y_shape=y_train_arr.shape,
-                                                filters_last_conv=1,
+                                                filters_last_conv=10,
                                                 stochastic=False)
     for num in range(ensemble_start, ensemble_quantity):
         model_name = f'deepesd_{predictand_name}_{num}'
