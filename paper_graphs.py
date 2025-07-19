@@ -404,7 +404,7 @@ if '4' in FIGS:
                             medianprops=dict(color='snow', linewidth=1.5))
             ax_99.set_xlim(xmin[1], xmax[1])
             ax_99.xaxis.set_ticks_position('bottom')
-            ax_99.set_xticks([]) if i>0 else ax_99.set_xticks(np.linspace(xmin[0], xmax[0], 11))
+            ax_99.set_xticks(np.linspace(xmin[0], xmax[0], 11))
             ax_99.tick_params(axis='x', labelsize=16)
 
             
