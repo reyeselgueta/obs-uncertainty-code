@@ -25,10 +25,12 @@ import deep4downscaling.viz as deep_viz
 
 DATA_PATH_PREDICTAND = '...'
 DATA_PATH_PREDICTOR = '...'
-DATA_PATH = './notebooks/data/input'
-FIGURES_PATH = './notebooks/figures'
-MODELS_PATH = './notebooks/models'
-ASYM_PATH = './notebooks/data/asym'
+DATA_PATH = './notebooks/data/input/'
+FIGURES_PATH = './notebooks/figures/'
+MODELS_PATH = './notebooks/models/'
+ASYM_PATH = './notebooks/data/asym/'
+PREDS_PATH = './preds/'
+
 
 ensemble_start = int(sys.argv[2])
 ensemble_quantity = int(sys.argv[3])
@@ -69,9 +71,9 @@ predictand_dates = {'ERA5-Land0.25deg': 'ERA5-Land0.25deg_tasmean_1971-2022.nc',
                     'AEMET_0.25deg': 'AEMET_0.25deg_tasmean_1951-2022.nc',
                     'E-OBS': 'tasmean_e-obs_v27e_0.10regular_Spain_0.25deg_reg_1950-2022.nc', 
                     'Iberia01_v1.0': 'Iberia01_v1.0_tasmean_1971-2015.nc',
-                    'CHELSA': 'CHELSA_tasmean_1979-2016.nc'}#TODO Borrar
+                    'CHELSA': 'CHELSA_tasmean_1979-2016.nc'}
 for predictand_name in predictands:
-    predictand_filename = f'{DATA_PATH_PREDICTAND}/{predictand_name}/{predictand_dates[predictand_name]}'#TODO Rellenar por usuario
+    predictand_filename = f'{DATA_PATH_PREDICTAND}/{predictand_name}/{predictand_dates[predictand_name]}'
     predictand = xr.open_dataset(predictand_filename)
     predictand["time"] = predictand["time"].dt.floor("D")
     predictand = predictand.sel(time=slice(years_train[0], years_test[1]))
@@ -176,15 +178,15 @@ for predictand_name in predictands_to_train:
                                         mask=y_mask, batch_size=16)
 
 
-        pred_test.to_netcdf(f'/oceano/gmeteo/users/reyess/paper1-code/preds/test/predTest_{model_name}_{years_test[0]}-{years_test[1]}.nc')#TODO ./preds/test
+        pred_test.to_netcdf(f'{PREDS_PATH}test/predTest_{model_name}_{years_test[0]}-{years_test[1]}.nc')
         
         del model
 
 
 # GCM Predictions
 years_reference = ('1980-01-01', '2014-12-31')
-gcm_hist = xr.open_dataset(f'/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling/notebooks/data/input/EC-Earth3-Veg_r1i1p1f1_hist.nc')
-gcm_predictor = xr.open_dataset(f'/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling/notebooks/data/input/EC-Earth3-Veg_r1i1p1f1_ssp585_fut.nc')#TODO ./
+gcm_hist = xr.open_dataset(f'{DATA_PATH}EC-Earth3-Veg_r1i1p1f1_hist.nc')
+gcm_predictor = xr.open_dataset(f'{DATA_PATH}EC-Earth3-Veg_r1i1p1f1_ssp585_fut.nc')
 
 gcm_hist = gcm_hist.sel(time=slice(*years_reference))
 era5_reference = predictor.sel(time=slice(*years_reference))
@@ -227,7 +229,7 @@ for years_gcm in [('2021', '2040'), ('2041', '2060'), ('2061', '2080'), ('2081',
                         device=device, var_target='tasmean',
                         mask=y_mask, batch_size=16)
 
-            proj_future.to_netcdf(f'/oceano/gmeteo/users/reyess/paper1-code/preds/gcm/predGCM_{model_name}_{gcm_name}_{main_scenario}_{years_gcm[0]}-{years_gcm[1]}.nc')
+            proj_future.to_netcdf(f'{PREDS_PATH}gcm/predGCM_{model_name}_{gcm_name}_{main_scenario}_{years_gcm[0]}-{years_gcm[1]}.nc')
 
             del model
 
