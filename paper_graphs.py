@@ -158,7 +158,8 @@ if '2' in FIGS:
 
     utils.create_multi_graph(
             data = inverted_stat_realization,
-            vmin=[0, 0, 0], vmax=[2, 2, 2],
+            vmin=[vminMetric['rmse'][0], vminMetric['bias'][0], vminMetric['bias99'][0]],
+            vmax=[vmaxMetric['rmse'][0], vmaxMetric['bias'][0], vmaxMetric['bias99'][0]],
             fig_path=FIGS_PATH, fig_name=figName, 
             n_rows=rows, n_cols=len(predictands),
             cmap_colors=[(0, 1, 20)]*rows,
@@ -182,7 +183,8 @@ if '2' in FIGS:
         title = 'Std' if j==0 else None
         utils.create_multi_graph(
                 data = error_std,
-                vmin=[0, 0, 0], vmax=[1, 1, 1],
+                vmin=[vminMetric['rmse'][0], vminMetric['bias'][0], vminMetric['bias99'][0]],
+                vmax=[vmaxMetric['rmse'][0], vmaxMetric['bias'][0], vmaxMetric['bias99'][0]],
                 fig_path=FIGS_PATH, fig_name=f'fig2_std_bias_error_{ENSEMBLE_QUANTITY}_{stat_name}.pdf', 
                 n_rows=1, n_cols=1,
                 cmap_colors=[(0, 1, 11)],
