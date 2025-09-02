@@ -12,18 +12,17 @@ import sys
 DATA_PATH = './data/input/'
 FIGS_PATH = './notebooks/figures/'
 MODELS_PATH = './notebooks/models/'
-PREDS_PATH_GCM = './preds/gcm/'
-PREDS_PATH_TEST = './preds/test/'
-REF_GRID = 'AEMET_0.25deg_tasmean_1951-2022.nc' # Put a dataset of your choice that is a common grid for your predictands.
+PREDS_PATH = './preds/'
 
-# # INPUT DATA
+
+# INPUT DATA
 FIGS = sys.argv[1]
-ENSEMBLE_QUANTITY = 10
+ENSEMBLE_QUANTITY = 50
 GCM_NAME = 'EC-Earth3-Veg'
 MAIN_SCENARIO = 'ssp585'
 
 
-# # GENERAL VARIABLES
+# GENERAL VARIABLES
 predictands = ['ERA5-Land0.25deg', 'E-OBS','AEMET_0.25deg', 'Iberia01_v1.0', 'CHELSA']
 predictands_map = {'ERA5-Land0.25deg': 'ERA5-Land', 'E-OBS': 'E-OBS','AEMET_0.25deg':'ROCIO-IBEB', 'Iberia01_v1.0':'Iberia01', 'CHELSA': 'CHELSA'}
 
@@ -59,7 +58,7 @@ if '1' in FIGS:
         obs[predictand_name] = utils.get_predictand(DATA_PATH, predictand_name, 'tasmean')
         obs[predictand_name] = obs[predictand_name].sel(time=slice(*(yearsTrain[0], yearsTest[1])))
         obs[predictand_name] = utils.mask_data( # TODO Reemplazar a uso de d4d
-                    path = f'{DATA_PATH}{REF_GRID}',
+                    path = f'{DATA_PATH}AEMET_0.25deg/AEMET_0.25deg_tasmean_1951-2022.nc',
                     var='tasmean',
                     to_slice=(yearsTrain[0], yearsTest[1]),
                     objective = obs[predictand_name],
@@ -104,7 +103,7 @@ if '1' in FIGS:
     del total_metrics, total_metrics_concatened, std_metrics
     print("Figura 1 completada!")
 
-
+    
     ### # FIG2 # ####
 if '2' in FIGS:
     stat_metrics = ['rmse', 'bias', 'bias99']
@@ -123,7 +122,7 @@ if '2' in FIGS:
         loaded_test_obs = utils.get_predictand(DATA_PATH, predictand_name, 'tasmean')
         loaded_test_obs = loaded_test_obs.sel(time=slice(*(yearsTest[0], yearsTest[1])))
         loaded_test_obs = utils.mask_data(
-                    path = f'{DATA_PATH}{REF_GRID}',
+                    path = f'{DATA_PATH}AEMET_0.25deg/AEMET_0.25deg_tasmean_1951-2022.nc',
                     var='tasmean',
                     to_slice=(yearsTrain[0], yearsTest[1]),
                     objective = loaded_test_obs,
@@ -135,7 +134,7 @@ if '2' in FIGS:
 
         for predictand_number in predictand_numbered:
             modelName = f'deepesd_{predictand_number}_2004-01-01-2015-12-31'
-            loaded_test = xr.open_dataset(f'{PREDS_PATH_TEST}predTest_{modelName}.nc')
+            loaded_test = xr.open_dataset(f'{PREDS_PATH}test/predTest_{modelName}.nc')
             rmse = np.sqrt((((loaded_test - loaded_test_obs)**2).mean(dim=['time']))['tasmean'])
             bias = (loaded_test.mean(['time'])['tasmean'] - loaded_test_obs.mean(['time'])['tasmean'])
             loaded_test_99 = loaded_test.resample(time = 'YE').quantile(0.99, dim = 'time')
@@ -158,8 +157,7 @@ if '2' in FIGS:
 
     utils.create_multi_graph(
             data = inverted_stat_realization,
-            vmin=[vminMetric['rmse'][0], vminMetric['bias'][0], vminMetric['bias99'][0]],
-            vmax=[vmaxMetric['rmse'][0], vmaxMetric['bias'][0], vmaxMetric['bias99'][0]],
+            vmin=[0, -2, -2], vmax=[2, 2, 2],
             fig_path=FIGS_PATH, fig_name=figName, 
             n_rows=rows, n_cols=len(predictands),
             cmap_colors=[(0, 1, 20)]*rows,
@@ -183,8 +181,7 @@ if '2' in FIGS:
         title = 'Std' if j==0 else None
         utils.create_multi_graph(
                 data = error_std,
-                vmin=[vminMetric['rmse'][0], vminMetric['bias'][0], vminMetric['bias99'][0]],
-                vmax=[vmaxMetric['rmse'][0], vmaxMetric['bias'][0], vmaxMetric['bias99'][0]],
+                vmin=[0, 0, 0], vmax=[1, 1, 1],
                 fig_path=FIGS_PATH, fig_name=f'fig2_std_bias_error_{ENSEMBLE_QUANTITY}_{stat_name}.pdf', 
                 n_rows=1, n_cols=1,
                 cmap_colors=[(0, 1, 11)],
@@ -197,21 +194,22 @@ if '2' in FIGS:
         )
     
     print("Figura 2 completada!")
-   
+
+
 
 
 ### # FIG3 # ####
 if '3' in FIGS:
     
 
-    metric_label = {'mean': 'Mean', 'std': 'Std'}
+    metric_label = {'mean': 'Mean', 'std': 'Std', '99mean': '99th-Mean'}
 
-    metrics = ['Mean', '99Percentile']
+    metrics = ['mean', '99mean']
     # climatology - CCSIGNAL
-    vminMetric = {'Mean': {'mean':4.6, 'std': 0.05, 'm-ticks':4, 'std-ticks':0, 'm-cmap':4, 'std-cmap':0, 'std-cmap-short':0}, 
-                  '99Percentile': {'mean':5, 'std': 0.25,  'm-ticks':2, 'std-ticks':2,'m-cmap':2, 'std-cmap':2, 'std-cmap-short':0}}
-    vmaxMetric = {'Mean': {'mean':8.6, 'std': 0.85, 'm-ticks':15, 'std-ticks':9, 'm-cmap':14, 'std-cmap':8, 'std-cmap-short':5}, 
-                  '99Percentile': {'mean':13, 'std': 1.25, 'm-ticks':23, 'std-ticks':13, 'm-cmap':22, 'std-cmap':13, 'std-cmap-short':5}}
+    vminMetric = {'mean': {'mean':4.6, 'std': 0.05, 'm-ticks':4, 'std-ticks':0, 'm-cmap':4, 'std-cmap':0, 'std-cmap-short':0}, 
+                  '99mean': {'99mean':5, 'std': 0.25,  'm-ticks':2, 'std-ticks':2,'m-cmap':2, 'std-cmap':2, 'std-cmap-short':0}}
+    vmaxMetric = {'mean': {'mean':8.6, 'std': 0.85, 'm-ticks':15, 'std-ticks':9, 'm-cmap':14, 'std-cmap':8, 'std-cmap-short':5}, 
+                  '99mean': {'99mean':13, 'std': 1.25, 'm-ticks':23, 'std-ticks':13, 'm-cmap':22, 'std-cmap':13, 'std-cmap-short':5}}
     
     data_predictands = {key: {predictand_name: {} for predictand_name in predictands} for key in metrics}
     for metric in metrics:
@@ -227,45 +225,45 @@ if '3' in FIGS:
             obs_predictand = utils.get_predictand(f'{DATA_PATH}', predictand_name, 'tasmean')
             obs_temp = obs_predictand.sel(time=slice(*(yearsTrain[0], yearsTest[1])))
             obs_predictand = utils.mask_data(
-                        path = f'{DATA_PATH}{REF_GRID}',
+                        path = f'{DATA_PATH}AEMET_0.25deg/AEMET_0.25deg_tasmean_1951-2022.nc',
                         var='tasmean',
                         to_slice=(yearsTrain[0], yearsTest[1]),
                         objective = obs_predictand.sel(time=slice(*(hist_baseline[0], hist_baseline[1]))),
                         secondGrid = obs_temp)
-            if metric == '99Percentile':
+            if metric == '99mean':
                 obs_predictand = obs_predictand.resample(time = 'YE').quantile(0.99, dim = 'time')
             obs_predictand_mean = obs_predictand.mean(dim='time')
 
             # Future Data
             predictand_numbered = [f"{predictand_name}_{i}" for i in range(1, ENSEMBLE_QUANTITY+1)]
-            predictand_data = {'mean': None, 'std': None}
+            predictand_data = {metric: None, 'std': None}
             mean_list = []
 
             grided_mean_list = []
             for predictand_number in predictand_numbered:
                 modelName = f'deepesd_{predictand_number}' 
-                loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
+                loaded_data = xr.open_dataset(f'{PREDS_PATH}gcm//predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
                 loaded_data = loaded_data.sel(time=slice(*future_3))
-                if metric == '99Percentile':
+                if metric == '99mean':
                     loaded_data = loaded_data.resample(time = 'YE').quantile(0.99, dim = 'time')
                 mean_time = loaded_data.mean(dim='time')
                 mean_list.append(mean_time)
 
             predictand_data_ensemble = xr.concat(mean_list, dim='member') - obs_predictand_mean
 
-            predictand_data['mean'] = predictand_data_ensemble.mean('member')
+            predictand_data[metric] = predictand_data_ensemble.mean('member')
             predictand_data['std'] = predictand_data_ensemble.std('member')
-            predictands_total_mean.append(predictand_data['mean'])
+            predictands_total_mean.append(predictand_data[metric])
             
-            data_predictands[metric][predictand_name]['mean'] = predictand_data['mean']
+            data_predictands[metric][predictand_name][metric] = predictand_data[metric]
             data_predictands[metric][predictand_name]['std'] = predictand_data['std']
             del predictand_data_ensemble, predictand_data
 
 
         utils.create_multi_graph(
                 data = data_predictands[metric],
-                vmin=[vminMetric[metric]['mean'], vminMetric[metric]['std']],
-                vmax=[vmaxMetric[metric]['mean'], vmaxMetric[metric]['std']],
+                vmin=[vminMetric[metric][metric], vminMetric[metric]['std']],
+                vmax=[vmaxMetric[metric][metric], vmaxMetric[metric]['std']],
                 fig_path=FIGS_PATH, fig_name=figName, 
                 n_rows=len(metrics), n_cols=len(data_predictands[metric]),
                 cmap_colors=((0, 1, 23), (0, 1, 12)),
@@ -309,7 +307,7 @@ if '4' in FIGS:
     shape_name_list = ['Iberia', 'Pirineos']
     #*********************************************************************+
     references_grid = {shape: [] for shape in shape_name_list}
-    reference_grid = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_deepesd_AEMET_0.25deg_1_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
+    reference_grid = xr.open_dataset(f'{PREDS_PATH}gcm//predGCM_deepesd_AEMET_0.25deg_1_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
     reference_grid = reference_grid.sel(time=slice(yearsLong[0],'2081-01-02'))
     for shape in shape_name_list:
         if shape == 'Iberia':
@@ -347,7 +345,7 @@ if '4' in FIGS:
                 obs2 = utils.get_predictand(f'{DATA_PATH}', predictand_name, 'tasmean')
                 obs_temp = obs2.sel(time=slice(*(yearsTrain[0], yearsTest[1])))
                 obs2 = utils.mask_data(
-                            path = f'{DATA_PATH}{REF_GRID}',
+                            path = f'{DATA_PATH}AEMET_0.25deg/AEMET_0.25deg_tasmean_1951-2022.nc',
                             var='tasmean',
                             to_slice=(hist_baseline[0], hist_baseline[1]),
                             objective = obs2.sel(time=slice(*(hist_baseline))),
@@ -369,7 +367,7 @@ if '4' in FIGS:
 
                 for predictand_number in predictand_numbered:
                     modelName = f'deepesd_{predictand_number}' 
-                    loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsGCM[i][0]}-{yearsGCM[i][1]}.nc')
+                    loaded_data = xr.open_dataset(f'{PREDS_PATH}gcm//predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsGCM[i][0]}-{yearsGCM[i][1]}.nc')
                     loaded_data = loaded_data.sel(time=slice(*(period)))
                     grided_data = loaded_data.sel(
                         lat=references_grid[shape].lat,
@@ -426,15 +424,15 @@ if '4' in FIGS:
         y_min, y_max = ax1.get_ylim()
         y_center = (y_min + y_max) / 2
         # Dibujar una línea horizontal
-        ax1.hlines(y=y_center, xmin=xmin[1], xmax=xmax[1], colors='black', linestyles='dashed', linewidth=1)
+        ax1.hlines(y=y_center, xmin=xmin[0], xmax=xmax[1], colors='black', linestyles='dashed', linewidth=1)
 
         # Agregar la cuadrícula punteada
         ax1.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
         ax_99.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
 
         # Agregar etiquetas en la parte superior derecha
-        ax1.text(xmax[1] - 1, y_max/2 + 0.5, 'Mean', fontsize=14, fontweight='bold', ha='right', va='top', color='black')
-        ax_99.text(xmax[1] - 0.5, + 0.5, '99th Percentile', fontsize=14, fontweight='bold', ha='right', va='top', color='black')
+        ax1.text(xmax[1] - 0.7, y_max/2 + 0.5, 'Mean', fontsize=14, fontweight='bold', ha='right', va='top', color='black')
+        ax_99.text(xmax[1] - 0.2, + 0.5, '99th Percentile', fontsize=14, fontweight='bold', ha='right', va='top', color='black')
 
 
         plt.legend(legend_handles, names, loc='upper right', prop={'size': 14}, frameon=False)
@@ -453,7 +451,7 @@ if '5' in FIGS:
         obs_predictand = utils.get_predictand(f'{DATA_PATH}', predictand_name, 'tasmean')
         obs_temp = obs_predictand.sel(time=slice(*(yearsTrain[0], yearsTest[1])))
         obs_predictand = utils.mask_data(
-                    path = f'{DATA_PATH}{REF_GRID}',
+                    path = f'{DATA_PATH}AEMET_0.25deg/AEMET_0.25deg_tasmean_1951-2022.nc',
                     var='tasmean',
                     to_slice=(yearsTrain[0], yearsTest[1]),
                     objective = obs_predictand.sel(time=slice(*(hist_baseline[0], hist_baseline[1]))),
@@ -471,7 +469,7 @@ if '5' in FIGS:
         for p_num in range(1, ENSEMBLE_QUANTITY+1):
             
             modelName = f'deepesd_{predictand_name}_{p_num}'
-            loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
+            loaded_data = xr.open_dataset(f'{PREDS_PATH}gcm//predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
             loaded_data = loaded_data.sel(time=slice(*(future_3[0], future_3[1])))
             
 
@@ -538,7 +536,7 @@ if '6' in FIGS:
             loaded_test_obs = utils.get_predictand(DATA_PATH, predictand_name, 'tasmean')
             loaded_test_obs = loaded_test_obs.sel(time=slice(*(yearsTest[0], yearsTest[1])))
             loaded_test_obs = utils.mask_data(
-                        path = f'{DATA_PATH}{REF_GRID}',
+                        path = f'{DATA_PATH}AEMET_0.25deg/AEMET_0.25deg_tasmean_1951-2022.nc',
                         var='tasmean',
                         to_slice=(yearsTrain[0], yearsTest[1]),
                         objective = loaded_test_obs,
@@ -556,7 +554,7 @@ if '6' in FIGS:
             predictand_numbered = [f"{predictand_name}_{i}" for i in range(1, ENSEMBLE_QUANTITY+1)]
             for predictand_number in predictand_numbered:
                 modelName = f'deepesd_{predictand_number}'
-                loaded_test = xr.open_dataset(f'{PREDS_PATH_TEST}predTest_{modelName}_{yearsTest[0]}-{yearsTest[1]}.nc')
+                loaded_test = xr.open_dataset(f'{PREDS_PATH}test/predTest_{modelName}_{yearsTest[0]}-{yearsTest[1]}.nc')
                 rmse = np.sqrt((((loaded_test - loaded_test_obs)**2).mean(dim=['time', 'lat', 'lon']))['tasmean'])
                 rmse_test.append(rmse)
 
@@ -565,7 +563,7 @@ if '6' in FIGS:
                 test_pred.append(loaded_test.mean(dim=['time', 'lat', 'lon'])['tasmean'])
 
                 
-                loaded_pred = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
+                loaded_pred = xr.open_dataset(f'{PREDS_PATH}gcm//predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
                 loaded_pred = loaded_pred.sel(time=slice(*(future_3[0], future_3[1])))
                 if metric == '99Percentile':
                     loaded_pred = loaded_pred.resample(time = 'YE').quantile(0.99, dim = 'time')
@@ -689,5 +687,3 @@ if FIGS=='7':
     plt.close()
 
     print("Figura 7 completada!")
-
-
