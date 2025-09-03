@@ -10,9 +10,7 @@ import xarray as xr
 import torch
 from torch.utils.data import DataLoader, random_split
 
-BASE_PATH = Path("/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling")#"/vols/abedul/home/meteo/reyess/paper1-code/deep4downscaling")
-sys.path.insert(0, str(BASE_PATH))
-
+BASE_PATH = Path("/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling")
 import deep4downscaling.trans as deep_trans
 import deep4downscaling.deep.loss as deep_loss
 import deep4downscaling.deep.utils as deep_utils
@@ -41,7 +39,7 @@ main_scenario = 'ssp585'
 
 start = time.time()
 
-predictors_filename = os.path.join(f'{DATA_PATH_PREDICTOR}NorthAtlanticRegion_1.5degree/', "*ERA5.nc")#DATA_PATH_PREDICTOR
+predictors_filename = os.path.join(f'{DATA_PATH_PREDICTOR}NorthAtlanticRegion_1.5degree/', "*ERA5.nc")
 
 predictor = xr.open_mfdataset(
     predictors_filename,
@@ -49,16 +47,16 @@ predictor = xr.open_mfdataset(
 )
 predictor = predictor.reindex(lat=list(reversed(predictor.lat))) 
 
-#En caso de entrenar varios modelos a la vez usar este linea ara evitar cuello de botella en disco duro.
+#If several models are being trained at the same time, this line may help avoid bottlenecks on the hard drive.
 predictor = predictor.load()
 
 # Remove days with nans in the predictor
 predictor = deep_trans.remove_days_with_nans(predictor)
 
-# Años a entranar y test
+# Years for training and test
 years_train = ('1980-01-01', '2003-12-31')#2003
 years_test = ('2004-01-01', '2015-12-31')#2015
-# Fechas a eliminar (Debido a que dataset de CHELSA no tiene datos esos dias)
+# Dates to exclude (CHELSA's dataset doesn't include this days)
 fechas_a_eliminar = ["1982-02-28", "1986-02-28", "1990-02-28", "1994-02-28", "1998-02-28", "2002-02-28", "2006-02-28", "2010-02-28", "2014-02-28"]
 fechas_a_eliminar = np.array(fechas_a_eliminar, dtype="datetime64")
 
@@ -67,22 +65,22 @@ predictand_dates = {'ERA5-Land0.25deg': 'ERA5-Land0.25deg_tasmean_1971-2022.nc',
                     'AEMET_0.25deg': 'AEMET_0.25deg_tasmean_1951-2022.nc',
                     'E-OBS': 'tasmean_e-obs_v27e_0.10regular_Spain_0.25deg_reg_1950-2022.nc', 
                     'Iberia01_v1.0': 'Iberia01_v1.0_tasmean_1971-2015.nc',
-                    'CHELSA': 'CHELSA_tasmean_1979-2016.nc'}#TODO Borrar
+                    'CHELSA': 'CHELSA_tasmean_1979-2016.nc'}
 
 for name in predictands:
-    predictand_filename = f'{DATA_PATH_PREDICTAND}/{name}/{predictand_dates[name]}'#TODO Rellenar por usuario
+    predictand_filename = f'{DATA_PATH_PREDICTAND}/{name}/{predictand_dates[name]}'
     predictand = xr.open_dataset(predictand_filename)
     predictand["time"] = predictand["time"].dt.floor("D")
     predictand = predictand.sel(time=slice(years_train[0], years_test[1]))
-    predictand = predictand.load() # Solo si se entrena varios modelos a la vez
+    predictand = predictand.load() #If several models are being trained at the same time, this line may help avoid bottlenecks on the hard drive.
 
-    # Descartar dias erroneos
+    # Throw away missing days in CHELSA
     predictand = predictand.sel(time=~predictand.time.isin(fechas_a_eliminar))
     # Transformar valores de kelvin a celcius
     is_kelvin = (predictand['tasmean'] > 100).any(dim=('time', 'lat', 'lon'))
     if is_kelvin:
         predictand['tasmean'].data = predictand['tasmean'].data - 273.15
-    # Descatar dias con valores en zero absoluto de CHELSA
+    # Throw away days with absolute zero value in CHELSA
     if name == 'CHELSA':
         mask = (predictand['tasmean'] < -200).any(dim=['lat', 'lon'])
         mask_computed = mask.compute()
@@ -113,8 +111,8 @@ x_test = predictor.sel(time=slice(*years_test))
 x_train_stand = deep_trans.standardize(data_ref=x_train, data=x_train)
 x_train_stand_arr = deep_trans.xarray_to_numpy(x_train_stand)
 
-# ENTRENAMIENTO
-utils.set_seed(num)
+# Predictand data preparation
+utils.set_seed(num) # Used for reproducibility
 y_train = predictand_dict[predictand_name].sel(time=slice(*years_train))
 y_test = predictand_dict[predictand_name].sel(time=slice(*years_test))
 
@@ -156,15 +154,13 @@ model = deep_models.DeepESDtas(
 )
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
+# Training model
 train_loss, val_loss = deep_train.standard_training_loop(
                             model=model, model_name=model_name, model_path=MODELS_PATH,
                             device=device, num_epochs=num_epochs,
                             loss_function=loss_function, optimizer=optimizer,
                             train_data=train_dataloader, valid_data=valid_dataloader,
                             patience_early_stopping=patience_early_stopping)
-
-model.load_state_dict(torch.load(f'{MODELS_PATH}/{model_name}.pt'))
 
 
 end = time.time() 
