@@ -43,16 +43,16 @@ predictor = xr.open_mfdataset(
 )
 predictor = predictor.reindex(lat=list(reversed(predictor.lat))) 
 
-#En caso de entrenar varios modelos a la vez usar este linea ara evitar cuello de botella en disco duro.
+#If several models are being used at the same time, this line may help avoid bottlenecks on the hard drive.
 predictor = predictor.load()
 
 # Remove days with nans in the predictor
 predictor = deep_trans.remove_days_with_nans(predictor)
 
-# Años a entranar y test
+# Years for training and test
 years_train = ('1980-01-01', '2003-12-31')#2003
 years_test = ('2004-01-01', '2015-12-31')
-# Fechas a eliminar (Debido a que dataset de CHELSA no tiene datos esos dias)
+# Dates to exclude (CHELSA's dataset doesn't include this days)
 fechas_a_eliminar = ["1982-02-28", "1986-02-28", "1990-02-28", "1994-02-28", "1998-02-28", "2002-02-28", "2006-02-28", "2010-02-28", "2014-02-28"]
 fechas_a_eliminar = np.array(fechas_a_eliminar, dtype="datetime64")
 
@@ -64,19 +64,19 @@ predictand_dates = {'ERA5-Land0.25deg': 'ERA5-Land0.25deg_tasmean_1971-2022.nc',
                     'CHELSA': 'CHELSA_tasmean_1979-2016.nc'}#TODO Borrar
 
 for name in predictands:
-    predictand_filename = f'{DATA_PATH_PREDICTAND}/{name}/{predictand_dates[name]}'#TODO Rellenar por usuario
+    predictand_filename = f'{DATA_PATH_PREDICTAND}/{name}/{predictand_dates[name]}'
     predictand = xr.open_dataset(predictand_filename)
     predictand["time"] = predictand["time"].dt.floor("D")
     predictand = predictand.sel(time=slice(years_train[0], years_test[1]))
-    predictand = predictand.load() # Solo si se entrena varios modelos a la vez
+    predictand = predictand.load() #If several models are being trained at the same time, this line may help avoid bottlenecks on the hard drive.
 
-    # Descartar dias erroneos
+    # Throw away missing days in CHELSA
     predictand = predictand.sel(time=~predictand.time.isin(fechas_a_eliminar))
     # Transformar valores de kelvin a celcius
     is_kelvin = (predictand['tasmean'] > 100).any(dim=('time', 'lat', 'lon'))
     if is_kelvin:
         predictand['tasmean'].data = predictand['tasmean'].data - 273.15
-    # Descatar dias con valores en zero absoluto de CHELSA
+    # Throw away days with absolute zero value in CHELSA
     if name == 'CHELSA':
         mask = (predictand['tasmean'] < -200).any(dim=['lat', 'lon'])
         mask_computed = mask.compute()
@@ -93,13 +93,13 @@ predictand_merge_train = xr.concat(predictand_dict.values(), dim='stacked').mean
 y_mask = deep_trans.compute_valid_mask(predictand_merge_train) 
 
 
-# Preparacion de predictor
+# Predictor's data preparation
 x_train = predictor.sel(time=slice(*years_train))
 x_test = predictor.sel(time=slice(*years_test))
 x_train_stand = deep_trans.standardize(data_ref=x_train, data=x_train)
 x_train_stand_arr = deep_trans.xarray_to_numpy(x_train_stand)
 
-# Preparacion de predictando
+# Predictand's data preparation
 y_train = predictand_dict[predictand_name].sel(time=slice(*years_train))
 y_test = predictand_dict[predictand_name].sel(time=slice(*years_test))
 
@@ -123,7 +123,7 @@ model = deep_models.DeepESDtas(
     stochastic=False
 )
 print(device)
-# Cargar los pesos en esa instancia
+# Load model optimal state
 state_dict = torch.load(f"{MODELS_PATH}/{model_name}.pt", map_location=device)
 model.load_state_dict(state_dict, strict=True)
 
@@ -161,8 +161,6 @@ for years_gcm in [('2021', '2040'), ('2041', '2060'), ('2061', '2080'), ('2081',
     gcm_fut_corrected_stand = deep_trans.standardize(data_ref=x_train, data=gcm_fut_corrected)
 
 
-
-    #for predictand_name in predictands_to_train:
     y_train = predictand_dict[predictand_name].sel(time=slice(*years_train))
     y_train = y_train.sel(time=~y_train.time.isin(fechas_a_eliminar))
     y_train_stack = y_train.stack(gridpoint=('lat', 'lon'))
@@ -174,7 +172,6 @@ for years_gcm in [('2021', '2040'), ('2041', '2060'), ('2061', '2080'), ('2081',
 
     y_train_arr = deep_trans.xarray_to_numpy(y_train_stack_filt)
     
-    #for num in range(ensemble_start, ensemble_quantity):
     model = deep_models.DeepESDtas(x_shape=x_train_stand_arr.shape,
                                             y_shape=y_train_arr.shape,
                                             filters_last_conv=10,
