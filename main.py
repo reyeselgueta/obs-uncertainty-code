@@ -166,6 +166,6 @@ train_loss, val_loss = deep_train.standard_training_loop(
 end = time.time() 
 elapsed_minutes = (end - start) / 60
 
-print(f"Tiempo transcurrido: {elapsed_minutes:.2f} minutos")
+print(f"Time elapsed: {elapsed_minutes:.2f} minutes")
 
 print("Model Train Finished")
