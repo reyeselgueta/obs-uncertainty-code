@@ -38,6 +38,15 @@ future_2 = ('2041-01-01', '2060-12-31')
 future_3 = ('2081-01-01', '2100-12-31') 
 future_4 = ('2061-01-01', '2080-12-31')
 
+regions = [
+    ("Central Plateau", 39.0, 41.5, -6.5, -2.5, "lightgrey"),# Name, Lat, Lat, Lon, Lon
+    ("Cantabrian Mountains", 42.5, 43.5, -7.0, -2.5, "lightgrey"),
+    ("Ebro Valley", 40.5, 42.5, -2.0, 1.5, "lightgrey"),
+    ("Pyrenees", 41.42, 42.8, -0.37, 3.37, "lightgrey"),
+    ("Sierra Nevada", 36.7, 37.2, -3.6, -2.8, "lightgrey"),
+    ("Guadalquivir Valley", 36.8, 38.5, -6.5, -3.5, "lightgrey")
+]
+
 
 ### # FIG1 # ####
 if '1' in FIGS:
@@ -301,16 +310,6 @@ if '3' in FIGS:
 ### # FIG 4 # ####
 if '4' in FIGS:
     shape_name_list = ['Iberia', 'Pyrenees', "Sierra Nevada", "Ebro Valley", "Guadalquivir Valley"]
-    regions = [
-        ("Central Plateau", 39.0, 41.5, -6.5, -2.5, "lightgrey"),# Name, Lat, Lat, Lon, Lon
-        ("Cantabrian Mountains", 42.5, 43.5, -7.0, -2.5, "lightgrey"),
-        ("Ebro Valley", 40.5, 42.5, -2.0, 1.5, "lightgrey"),
-        ("Pyrenees", 41.42, 42.8, -0.37, 3.37, "lightgrey"),
-        ("Sierra Nevada", 36.7, 37.2, -3.6, -2.8, "lightgrey"),
-        ("Guadalquivir Valley", 36.8, 38.5, -6.5, -3.5, "lightgrey"),
-        ("Duero", 40.85, 42.45, -6.59, -4.75, "lightgrey"),
-        ("Tinto", 36.00, 38.20, -7.23, -5.20, "lightgrey")
-    ]
     #*********************************************************************+
     references_grid = {shape: [] for shape in shape_name_list}
     reference_grid = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_deepesd_AEMET_0.25deg_1_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
@@ -647,15 +646,6 @@ if FIGS=='7':
     ax.add_feature(cfeature.RIVERS)
     ax.add_feature(cfeature.LAND, edgecolor='black')
 
-    # Defined regions
-    regions = [
-        ("Central Plateau", 39.0, 41.5, -6.5, -2.5, "lightgrey"),
-        ("Cantabrian Mountains", 42.5, 43.5, -7.0, -2.5, "lightgrey"),
-        ("Ebro Valley", 40.5, 42.5, -2.0, 1.5, "lightgrey"),
-        ("Pyrenees", 41.42, 42.8, -0.37, 3.37, "lightgrey"),
-        ("Sierra Nevada", 36.7, 37.2, -3.6, -2.8, "lightgrey"),
-        ("Guadalquivir Valley", 36.8, 38.5, -6.5, -3.5, "lightgrey")
-    ]
 
     # Add region borders
     for name, lat_min, lat_max, lon_min, lon_max, color in regions:
