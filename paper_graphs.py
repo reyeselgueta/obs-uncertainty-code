@@ -636,7 +636,7 @@ if '6' in FIGS:
 
 
 if FIGS=='7':
-    # Crear figura y ejes
+    # Create fig and axis
     fig = plt.figure(figsize=(10, 8))
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.set_extent([-10, 5, 35, 45])
@@ -647,7 +647,7 @@ if FIGS=='7':
     ax.add_feature(cfeature.RIVERS)
     ax.add_feature(cfeature.LAND, edgecolor='black')
 
-    # Definir regiones como rectángulos: (nombre, lat_min, lat_max, lon_min, lon_max)
+    # Defined regions
     regions = [
         ("Central Plateau", 39.0, 41.5, -6.5, -2.5, "lightgrey"),
         ("Cantabrian Mountains", 42.5, 43.5, -7.0, -2.5, "lightgrey"),
@@ -657,7 +657,7 @@ if FIGS=='7':
         ("Guadalquivir Valley", 36.8, 38.5, -6.5, -3.5, "lightgrey")
     ]
 
-    # Añadir regiones como rectángulos de color
+    # Add region borders
     for name, lat_min, lat_max, lon_min, lon_max, color in regions:
         width = lon_max - lon_min
         height = lat_max - lat_min
@@ -666,7 +666,7 @@ if FIGS=='7':
                         facecolor=color, alpha=0.4,
                         transform=ccrs.PlateCarree())
         ax.add_patch(rect)
-        # Etiqueta en el centro de cada región
+        # Labet at the center of each region
         position_ha = 'left' if name=='Sierra Nevada' else 'center'
         position_va = 'top' if name=='Sierra Nevada' else 'center'
             
@@ -674,10 +674,10 @@ if FIGS=='7':
                 fontsize=9, ha=position_ha, va=position_va,
                 transform=ccrs.PlateCarree(), bbox=dict(facecolor='white', alpha=0.6))
 
-    # Cuadrícula
+    # Add Grid
     ax.gridlines(draw_labels=True)
 
-    # Título y guardar
+    # Title and save
     plt.tight_layout()
     plt.savefig(f"{FIGS_PATH}Toponomias.pdf", bbox_inches='tight')
     plt.close()
