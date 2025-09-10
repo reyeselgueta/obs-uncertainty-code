@@ -143,17 +143,21 @@ pred_test.to_netcdf(f'{PREDS_PATH}test/predTest_{model_name}_{years_test[0]}-{ye
 
 # GCM Predictions
 years_reference = ('1980-01-01', '2014-12-31')
+years_baseline = ('1995', '2014')
 gcm_hist = xr.open_dataset(f'/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling/notebooks/data/input/EC-Earth3-Veg_r1i1p1f1_hist.nc')
 gcm_predictor = xr.open_dataset(f'/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling/notebooks/data/input/EC-Earth3-Veg_r1i1p1f1_ssp585_fut.nc')#TODO ./
 
 gcm_hist = gcm_hist.sel(time=slice(*years_reference))
 era5_reference = predictor.sel(time=slice(*years_reference))
 
-for years_gcm in [('2021', '2040'), ('2041', '2060'), ('2061', '2080'), ('2081', '2100')]:
+for years_gcm in [years_baseline, ('2021', '2040'), ('2041', '2060'), ('2061', '2080'), ('2081', '2100')]:
     
-    gcm_predictor_sliced = gcm_predictor.sel(time=slice(*years_gcm))
+    if years_baseline[0] in years_gcm:
+        gcm_predictor_sliced = gcm_hist.sel(time=slice(*years_gcm))
+    else:
+        gcm_predictor_sliced = gcm_predictor.sel(time=slice(*years_gcm))
 
-    #Ajustes al gcm
+    # GCM Data standarize and bias correction
     gcm_predictor_sorted = deep_trans.sort_variables(data=gcm_predictor_sliced, ref=era5_reference, keep_vars=False)
     
     gcm_fut_corrected = deep_trans.scaling_delta_correction(data=gcm_predictor_sorted,
