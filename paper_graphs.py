@@ -481,7 +481,6 @@ if '5' in FIGS:
 
         # Load reference period
         for key, value in number_min_max.items():
-            print(value)
             modelName = f'deepesd_{predictand_name}_{value}'
             loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
             mean_time = loaded_data.mean(dim='time')
