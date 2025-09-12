@@ -112,7 +112,7 @@ x_train_stand = deep_trans.standardize(data_ref=x_train, data=x_train)
 x_train_stand_arr = deep_trans.xarray_to_numpy(x_train_stand)
 
 # Predictand data preparation
-utils.set_seed(num) # Used for reproducibility
+# utils.set_seed(num) # Used for reproducibility
 y_train = predictand_dict[predictand_name].sel(time=slice(*years_train))
 y_test = predictand_dict[predictand_name].sel(time=slice(*years_test))
 
