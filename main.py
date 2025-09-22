@@ -10,7 +10,7 @@ import xarray as xr
 import torch
 from torch.utils.data import DataLoader, random_split
 
-BASE_PATH = Path("/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling")
+BASE_PATH = Path("...CURRENT PATH.../deep4downscaling")
 import deep4downscaling.trans as deep_trans
 import deep4downscaling.deep.loss as deep_loss
 import deep4downscaling.deep.utils as deep_utils
@@ -21,8 +21,6 @@ import deep4downscaling.viz as deep_viz
 
 
 
-DATA_PATH_PREDICTAND = '...'
-DATA_PATH_PREDICTOR = '...'
 DATA_PATH = './notebooks/data/input/'
 FIGURES_PATH = './notebooks/figures/'
 MODELS_PATH = './notebooks/models/'
@@ -39,7 +37,7 @@ main_scenario = 'ssp585'
 
 start = time.time()
 
-predictors_filename = os.path.join(f'{DATA_PATH_PREDICTOR}NorthAtlanticRegion_1.5degree/', "*ERA5.nc")
+predictors_filename = os.path.join(f'{DATA_PATH}NorthAtlanticRegion_1.5degree/', "*ERA5.nc")
 
 predictor = xr.open_mfdataset(
     predictors_filename,
@@ -68,7 +66,7 @@ predictand_dates = {'ERA5-Land0.25deg': 'ERA5-Land0.25deg_tasmean_1971-2022.nc',
                     'CHELSA': 'CHELSA_tasmean_1979-2016.nc'}
 
 for name in predictands:
-    predictand_filename = f'{DATA_PATH_PREDICTAND}/{name}/{predictand_dates[name]}'
+    predictand_filename = f'{DATA_PATH}/{name}/{predictand_dates[name]}'
     predictand = xr.open_dataset(predictand_filename)
     predictand["time"] = predictand["time"].dt.floor("D")
     predictand = predictand.sel(time=slice(years_train[0], years_test[1]))
