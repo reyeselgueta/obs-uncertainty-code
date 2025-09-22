@@ -440,7 +440,6 @@ if '4' in FIGS:
 
     print("Figura 4 completada!")
     
-### # FIG5 # ####
 if '5' in FIGS:
     figName = f'fig5_extremes_ccsignals_Ensemble{ENSEMBLE_QUANTITY}.pdf'
     graph_data = {}
@@ -455,15 +454,24 @@ if '5' in FIGS:
         for p_num in range(1, ENSEMBLE_QUANTITY+1):
             
             modelName = f'deepesd_{predictand_name}_{p_num}'
-            loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
+
+            loaded_data_ref = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
+            mean_time_ref = loaded_data_ref.mean(dim='time')
+            gridded_mean_ref = loaded_data_ref.mean(dim=['time', 'lat', 'lon']) 
+            loaded_data_ref_99 = loaded_data_ref.resample(time = 'YE').quantile(0.99, dim = 'time')
+            mean_time_ref_99 = loaded_data_ref_99.mean(dim='time')
+            gridded_mean_ref_99 = loaded_data_ref_99.mean(dim=['time', 'lat', 'lon']) 
+
+            loaded_data = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
             loaded_data = loaded_data.sel(time=slice(*(future_3[0], future_3[1])))
 
-            grided_mean = loaded_data.mean(dim=['time', 'lat', 'lon']) 
-            mean_time = loaded_data.mean(dim='time')
+            grided_mean = loaded_data.mean(dim=['time', 'lat', 'lon']) - gridded_mean_ref
+            mean_time = loaded_data.mean(dim='time') - mean_time_ref
 
             loaded_data_99 = loaded_data.resample(time = 'YE').quantile(0.99, dim = 'time')
-            grided_mean_99 = loaded_data_99.mean(dim=['time', 'lat', 'lon']) 
-            mean_time_99 = loaded_data_99.mean(dim='time')
+            grided_mean_99 = loaded_data_99.mean(dim=['time', 'lat', 'lon']) - gridded_mean_ref_99
+            mean_time_99 = loaded_data_99.mean(dim='time') - mean_time_ref_99   
+
 
 
             # CHECK MIN AND MAX AND SAVE MIN, MAX, MEAN FOR CCSIGNAL
@@ -479,14 +487,6 @@ if '5' in FIGS:
                     predictand_data[key] = value[0]
                     number_min_max[key] = p_num
 
-        # Load reference period
-        for key, value in number_min_max.items():
-            modelName = f'deepesd_{predictand_name}_{value}'
-            loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
-            mean_time = loaded_data.mean(dim='time')
-
-            ccsignal = predictand_data[key] - mean_time
-            predictand_data[key] = ccsignal
 
         graph_data[predictand_name] = {
             'Rmax-Rmin (Mean)': predictand_data['max_mean'] - predictand_data['min_mean'],
@@ -510,7 +510,6 @@ if '5' in FIGS:
     )
  
     print("Figura 5 completada!")
-
 
 ### # FIG6 # ####
 if '6' in FIGS:
