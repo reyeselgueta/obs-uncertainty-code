@@ -9,9 +9,13 @@ import os
 import random
 import torch
 
+def get_region(name, regions):
+    for region in regions:
+        if region[0] == name:
+            return region
+    return None 
 
-
-def create_multi_graph(
+def create_multi_plot(
             data, #{'AxisY': {'AxisX': data}}
             vmin, vmax, # [], []
             fig_path, fig_name,
@@ -20,13 +24,14 @@ def create_multi_graph(
             cmap_colors=((0, 1, 10)),
             cmap_first_color=[0], cmap_last_color=[None],             
             color='cool',
-            tick_bool=False, 
+            rtick_bool=[None], ltick_bool=[None],
             orientation='horizontal', spacing='uniform',
             var='tasmean', fontsize=16,
             title=None, x_map=None,
             y_map=None, y_map_pos=(-0.07, 0.55)
     ):
-        
+        rtick_bool = rtick_bool*n_rows if rtick_bool==[None] else rtick_bool
+        ltick_bool = ltick_bool*n_rows if ltick_bool==[None] else ltick_bool
         cmap_last_color = cmap_last_color*n_rows if cmap_last_color==[None] else cmap_last_color
         color = color if isinstance(color, list) else [color]*n_rows
 
@@ -74,7 +79,8 @@ def create_multi_graph(
                             vmax=vmax[j],
                             cmap_min=cmap_min[j],
                             cmap_max=cmap_max[j],
-                            tick_bool=tick_bool, 
+                            rtick_bool=rtick_bool[j], 
+                            ltick_bool = ltick_bool[j],
                             orientation=orientation,
                             spacing=spacing,
                             fontsize=fontsize)
@@ -84,17 +90,21 @@ def create_multi_graph(
         plt.close()
 
 def _add_colorbar(fig, im, position, vmin, vmax, 
+                ltick_bool, rtick_bool,
                 cmap_min=0, cmap_max=5, 
-                fontsize=16, tick_bool = True,
+                fontsize=16,
                 spacing='uniform', orientation=None):
         cax = fig.add_axes(position)
         cbar = plt.colorbar(im, cax, orientation=orientation, spacing=spacing)
         ticks = np.linspace(vmin, vmax, int(np.floor(cmap_max - cmap_min)))
         cbar.set_ticks(ticks)
         cbar.ax.tick_params(labelsize=fontsize)
-        if tick_bool:
+        if rtick_bool or ltick_bool:
             tick_labels = [tick.get_text() for tick in cbar.ax.get_xticklabels()]
-            tick_labels[-1] += '+' 
+            if rtick_bool:
+                tick_labels[-1] += '+' 
+            if ltick_bool:
+                tick_labels[0] += '-' 
             cbar.ax.set_xticklabels(tick_labels)
 
 def get_predictand(data_path, name, var, complete_path = None):
