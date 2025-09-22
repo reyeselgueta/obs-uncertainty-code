@@ -7,7 +7,7 @@ import utils
 import torch
 from pathlib import Path
 
-BASE_PATH = Path("/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling")#"/vols/abedul/home/meteo/reyess/paper1-code/deep4downscaling")
+BASE_PATH = Path("...CURRENT PATH...../deep4downscaling")
 sys.path.insert(0, str(BASE_PATH))
 
 import deep4downscaling.trans as deep_trans
@@ -15,8 +15,7 @@ import deep4downscaling.deep.models as deep_models
 import deep4downscaling.deep.pred as deep_pred
 
 
-DATA_PATH_PREDICTAND = '...'
-DATA_PATH_PREDICTOR = '...'
+
 DATA_PATH = './notebooks/data/input/'
 FIGURES_PATH = './notebooks/figures/'
 MODELS_PATH = './notebooks/models/'
@@ -35,7 +34,7 @@ main_scenario = 'ssp585'
 
 
 
-predictors_filename = os.path.join(DATA_PATH_PREDICTOR, "*ERA5.nc")#DATA_PATH_PREDICTOR
+predictors_filename = os.path.join(DATA_PATH, "*ERA5.nc")
 
 predictor = xr.open_mfdataset(
     predictors_filename,
@@ -64,7 +63,7 @@ predictand_dates = {'ERA5-Land0.25deg': 'ERA5-Land0.25deg_tasmean_1971-2022.nc',
                     'CHELSA': 'CHELSA_tasmean_1979-2016.nc'}#TODO Borrar
 
 for name in predictands:
-    predictand_filename = f'{DATA_PATH_PREDICTAND}/{name}/{predictand_dates[name]}'
+    predictand_filename = f'{DATA_PATH}/{name}/{predictand_dates[name]}'
     predictand = xr.open_dataset(predictand_filename)
     predictand["time"] = predictand["time"].dt.floor("D")
     predictand = predictand.sel(time=slice(years_train[0], years_test[1]))
@@ -144,8 +143,8 @@ pred_test.to_netcdf(f'{PREDS_PATH}test/predTest_{model_name}_{years_test[0]}-{ye
 # GCM Predictions
 years_reference = ('1980-01-01', '2014-12-31')
 years_baseline = ('1995', '2014')
-gcm_hist = xr.open_dataset(f'/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling/notebooks/data/input/EC-Earth3-Veg_r1i1p1f1_hist.nc')
-gcm_predictor = xr.open_dataset(f'/oceano/gmeteo/users/reyess/paper1-code/deep4downscaling/notebooks/data/input/EC-Earth3-Veg_r1i1p1f1_ssp585_fut.nc')#TODO ./
+gcm_hist = xr.open_dataset(f'{DATA_PATH}EC-Earth3-Veg_r1i1p1f1_hist.nc')
+gcm_predictor = xr.open_dataset(f'{DATA_PATH}EC-Earth3-Veg_r1i1p1f1_ssp585_fut.nc')#TODO ./
 
 gcm_hist = gcm_hist.sel(time=slice(*years_reference))
 era5_reference = predictor.sel(time=slice(*years_reference))
