@@ -63,10 +63,10 @@ if '1' in FIGS:
 
         modelName = f'DeepESD_tas_{predictand_name}' 
 
-        obs[predictand_name] = utils.get_predictand(DATA_PATH_PREDICTANDS_SAVE, predictand_name, 'tasmean')
+        obs[predictand_name] = utils.get_predictand(DATA_PATH, predictand_name, 'tasmean')
         obs[predictand_name] = obs[predictand_name].sel(time=slice(*(yearsTrain[0], yearsTest[1])))
         obs[predictand_name] = utils.mask_data(
-                    path = f'{DATA_PATH_PREDICTANDS_SAVE}AEMET_0.25deg/AEMET_0.25deg_tasmean_1951-2022.nc',
+                    path = f'{DATA_PATH}AEMET_0.25deg/AEMET_0.25deg_tasmean_1951-2022.nc',
                     var='tasmean',
                     to_slice=(yearsTrain[0], yearsTest[1]),
                     objective = obs[predictand_name],
