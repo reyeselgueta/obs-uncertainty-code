@@ -16,8 +16,8 @@ def get_region(name, regions):
     return None 
 
 def create_multi_plot(
-            data, #{'AxisY': {'AxisX': data}}
-            vmin, vmax, # [], []
+            data,
+            vmin, vmax,
             fig_path, fig_name,
             n_rows, n_cols,
             cmap_min=None, cmap_max=None,
@@ -26,7 +26,7 @@ def create_multi_plot(
             color='cool',
             rtick_bool=[None], ltick_bool=[None],
             orientation='horizontal', spacing='uniform',
-            var='tasmean', fontsize=16,
+            var='tasmean', fontsize=16, y_height = 0.02,
             title=None, x_map=None,
             y_map=None, y_map_pos=(-0.07, 0.55)
     ):
@@ -65,6 +65,35 @@ def create_multi_plot(
                                     transform=ccrs.PlateCarree(),
                                     cmap=discreteCMAP,
                                     vmin=vmin[j], vmax=vmax[j])
+                
+                mean_val = float(np.nanmean(dataToPlot))
+                min_val = float(np.nanmin(dataToPlot))
+                max_val = float(np.nanmax(dataToPlot))
+
+                ax.text(
+                    0.97-0.35, 0.03,
+                    f"{mean_val:.2f}",
+                    transform=ax.transAxes,
+                    fontsize=fontsize * 0.6,
+                    color="black",
+                    ha="right", va="bottom"
+                )
+                ax.text(
+                    0.97-0.15, 0.03, 
+                    f"({min_val:.2f} - ",
+                    transform=ax.transAxes,
+                    fontsize=fontsize * 0.6,
+                    color="#1f77b4",
+                    ha="right", va="bottom"
+                )
+                ax.text(
+                    0.97, 0.03,
+                    f"{max_val:.2f})",
+                    transform=ax.transAxes,
+                    fontsize=fontsize * 0.6,
+                    color="#d62728",
+                    ha="right", va="bottom"
+                )
 
                 if i == 0:
                     if n_rows >= 3:
@@ -73,7 +102,7 @@ def create_multi_plot(
                         y_pos = 0.510 - (j * 0.443)
                     else:
                         y_pos = 0.08
-                    position = [0.125, y_pos, 0.775, 0.02]
+                    position = [0.125, y_pos, 0.775, y_height]
                     _add_colorbar(fig=fig, im=im, position=position,
                             vmin=vmin[j],
                             vmax=vmax[j],
