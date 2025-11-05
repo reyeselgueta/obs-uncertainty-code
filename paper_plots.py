@@ -235,7 +235,7 @@ if '3' in FIGS:
             for predictand_number in predictand_numbered:
                 modelName = f'deepesd_{predictand_number}' 
                 # Load hist inferences
-                hist_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
+                hist_data = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
                 if metric == '99mean':
                     hist_data = hist_data.resample(time = 'YE').quantile(0.99, dim = 'time')
                 hist_mean_time = hist_data.mean(dim='time')
@@ -247,7 +247,7 @@ if '3' in FIGS:
             for predictand_number in predictand_numbered:
                 modelName = f'deepesd_{predictand_number}' 
                 # Load future inferences
-                loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
+                loaded_data = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
                 loaded_data = loaded_data.sel(time=slice(*future_3))
                 if metric == '99mean':
                     loaded_data = loaded_data.resample(time = 'YE').quantile(0.99, dim = 'time')
@@ -312,7 +312,7 @@ if '4' in FIGS:
     shape_name_list = ['Iberia', 'Pyrenees', "Sierra Nevada", "Ebro Valley", "Guadalquivir Valley", "Central Plateau", "Cantabrian Mountains"]
     #*********************************************************************+
     references_grid = {shape: [] for shape in shape_name_list}
-    reference_grid = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_deepesd_AEMET_0.25deg_1_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
+    reference_grid = xr.open_dataset(f'{PREDS_PATH}/predGCM_deepesd_AEMET_0.25deg_1_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
     reference_grid = reference_grid.sel(time=slice(yearsLong[0],'2081-01-02'))
     for shape in shape_name_list:
         if shape == 'Iberia':
@@ -355,7 +355,7 @@ if '4' in FIGS:
                 for predictand_number in predictand_numbered:
                     modelName = f'deepesd_{predictand_number}' 
                     # FUTURE DATA
-                    loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsGCM[i][0]}-{yearsGCM[i][1]}.nc')
+                    loaded_data = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsGCM[i][0]}-{yearsGCM[i][1]}.nc')
                     loaded_data = loaded_data.sel(time=slice(*(period)))
                     grided_data = loaded_data.sel(
                         lat=references_grid[shape].lat,
@@ -366,7 +366,7 @@ if '4' in FIGS:
                     grided_mean = grided_data.mean(dim=['time', 'lat', 'lon']) 
                     grided_mean_99 = grided_data_99.mean(dim=['time', 'lat', 'lon'])
                     # REFERENCE DATA
-                    ref_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
+                    ref_data = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
 
                     ref_grided_data = ref_data.sel(
                         lat=references_grid[shape].lat,
@@ -455,14 +455,14 @@ if '5' in FIGS:
             
             modelName = f'deepesd_{predictand_name}_{p_num}'
 
-            loaded_data_ref = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
+            loaded_data_ref = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
             mean_time_ref = loaded_data_ref.mean(dim='time')
             gridded_mean_ref = loaded_data_ref.mean(dim=['time', 'lat', 'lon']) 
             loaded_data_ref_99 = loaded_data_ref.resample(time = 'YE').quantile(0.99, dim = 'time')
             mean_time_ref_99 = loaded_data_ref_99.mean(dim='time')
             gridded_mean_ref_99 = loaded_data_ref_99.mean(dim=['time', 'lat', 'lon']) 
 
-            loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
+            loaded_data = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
             loaded_data = loaded_data.sel(time=slice(*(future_3[0], future_3[1])))
 
             grided_mean = loaded_data.mean(dim=['time', 'lat', 'lon']) - gridded_mean_ref
@@ -556,7 +556,7 @@ if '6' in FIGS:
                 test_pred.append(loaded_test.mean(dim=['time', 'lat', 'lon'])['tasmean'])
 
                 
-                loaded_pred = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
+                loaded_pred = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
                 loaded_pred = loaded_pred.sel(time=slice(*(future_3[0], future_3[1])))
                 if metric == '99Percentile':
                     loaded_pred = loaded_pred.resample(time = 'YE').quantile(0.99, dim = 'time')
@@ -714,7 +714,7 @@ if FIGS == 'extra':
             for predictand_number in predictand_numbered:
                 modelName = f'deepesd_{predictand_number}' 
                 # Load hist inferences
-                hist_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
+                hist_data = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{gcm_ref_years[0]}-{gcm_ref_years[1]}.nc')
                 if metric == '99mean':
                     hist_data = hist_data.resample(time = 'YE').quantile(0.99, dim = 'time')
                 hist_mean_time = hist_data.mean(dim='time')
@@ -726,7 +726,7 @@ if FIGS == 'extra':
             for predictand_number in predictand_numbered:
                 modelName = f'deepesd_{predictand_number}' 
                 # Load future inferences
-                loaded_data = xr.open_dataset(f'{PREDS_PATH_GCM}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
+                loaded_data = xr.open_dataset(f'{PREDS_PATH}/predGCM_{modelName}_{GCM_NAME}_{MAIN_SCENARIO}_{yearsLong[0]}-{yearsLong[1]}.nc')
                 loaded_data = loaded_data.sel(time=slice(*future_3))
                 if metric == '99mean':
                     loaded_data = loaded_data.resample(time = 'YE').quantile(0.99, dim = 'time')
